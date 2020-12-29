@@ -1,0 +1,15 @@
+* Docs
+  - [[https://developers.google.com/gmail/imap/imap-extensions#access_to_gmail_labels_x-gm-labels][GMail IMAP extensions]]
+  - [[https://imapsync.lamiral.info/FAQ.d/FAQ.Gmail.txt][Note]] on GMail throttling 
+  - [[https://gist.github.com/chrisdone/47a9e22672b54dedc87dec8b415e8127][Email message parsing in Haskell in 2018]]
+
+* Packages
+  - [[https://hackage.haskell.org/package/imap][imap]]
+  - [[https://hackage.haskell.org/package/mbox-0.3.4/docs/Data-MBox.html][Data.Mbox]]
+
+* Plan
+  - Write my own mbox parser as ~[(ByteString,Date,ByteString)]~
+  - Extract headers: Message-ID, X-Gmail-Labels
+  - Check if message already exists
+  - Append to mbox with first label (or default if missing)
+  - Set other labels using Gmail extensions
