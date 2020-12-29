@@ -5,11 +5,17 @@
 
 * Packages
   - [[https://hackage.haskell.org/package/imap][imap]]
-  - [[https://hackage.haskell.org/package/mbox-0.3.4/docs/Data-MBox.html][Data.Mbox]]
+  - [[https://github.com/knrafto/email-header][emial-header]]
 
 * Plan
-  - Write my own mbox parser as ~[(ByteString,Date,ByteString)]~
-  - Extract headers: Message-ID, X-Gmail-Labels
+  - Command line options
+    - Skip N first messages
+    - Process N messages then stop
+  - Write my own ~mbox~ parser.
+    + Returns ~[(from:ByteString,fromDate:Date,headrs:ByteString, body:ByteString)]~
+    + De-mangle /">From"/.
+    + Lazy!
+  - Extract headers: ~Message-ID~, ~X-Gmail-Labels~.
   - Check if message already exists
   - Append to mbox with first label (or default if missing)
   - Set other labels using Gmail extensions

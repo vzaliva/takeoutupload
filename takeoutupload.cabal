@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c4c821ea483f5e2e66d769c0c6142239ae35aec1e6d845f5c2503d9bd0c3748a
+-- hash: 672bf560d71a6c689b1120f5494b56a7ed5a1fd0d3e40bf8f31942387b372eb2
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -29,7 +29,7 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Mbox
   other-modules:
       Paths_takeoutupload
   hs-source-dirs:
