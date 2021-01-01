@@ -65,7 +65,9 @@ parseOpts argv =
 main :: IO ()
 main =
     do
-    (opts, inputfile) <- getArgs >>= parseOpts
-    ; putStr inputfile
-    ; putStr (show opts)
-    someFunc
+      (opts, inputfile) <- getArgs >>= parseOpts
+      msgs <- processMBFile inputfile
+--      let msgs = drop opts.optSkip msgs in
+      putStr inputfile
+
+
