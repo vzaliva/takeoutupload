@@ -2,14 +2,14 @@ module Mbox
     ( processMBFile
     ) where
 
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as SB
+import           Data.ByteString            (ByteString)
+import qualified Data.ByteString.Char8      as SB
 import qualified Data.ByteString.Lazy.Char8 as LB
-import System.IO
-import Data.Maybe
-import Data.List
-import Text.Regex.TDFA    
-    
+import           Data.List
+import           Data.Maybe
+import           System.IO
+import           Text.Regex.TDFA
+
 data Message = Message {
       fromLine :: LB.ByteString,
       headers  :: LB.ByteString,
@@ -37,9 +37,9 @@ readMessage (from:xs) =
 
 processMB :: [LB.ByteString] -> [Message]
 processMB ls = case readMessage ls of
-                 Nothing -> []
+                 Nothing      -> []
                  Just (m,ls') -> m:(processMB ls')
-             
+
 processMBFile :: FilePath -> IO [Message]
 processMBFile file = do
     bs <- LB.readFile file

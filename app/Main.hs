@@ -1,17 +1,17 @@
 module Main where
 
-import Control.Monad
-import System.Console.GetOpt
-import System.Environment(getArgs, getProgName)    
-    
-import Mbox
+import           Control.Monad
+import           System.Console.GetOpt
+import           System.Environment    (getArgs, getProgName)
+
+import           Mbox
 
 data Options = Options
-    { optVerbose     :: Bool
-    , optDryRun      :: Bool
-    , optConfig      :: String
-    , optSkip        :: Int
-    , optLimit       :: Maybe Int
+    { optVerbose :: Bool
+    , optDryRun  :: Bool
+    , optConfig  :: String
+    , optSkip    :: Int
+    , optLimit   :: Maybe Int
     } deriving Show
 
 defaultOptions = Options
@@ -21,7 +21,7 @@ defaultOptions = Options
     , optSkip        = 0
     , optLimit       = Nothing
     }
-    
+
 options :: [OptDescr (Options -> Either String Options)]
 options =
     [ Option ['v']     ["verbose"]
@@ -29,7 +29,7 @@ options =
         "chatty output on stderr"
     , Option ['d']     ["dry-run"]
         (NoArg (\ opts -> Right opts { optDryRun = True }))
-        "verobose progress on stderr"        
+        "verobose progress on stderr"
     , Option ['c']     ["config"]
         (ReqArg (\ d opts -> Right opts { optConfig = d }) "FILE")
         "config file"
@@ -55,7 +55,7 @@ parseOpts argv =
       progName <- getProgName
       let helpMessage = "Usage: " ++ progName ++ " [OPTION...] <inputfile>"
       case getOpt Permute options argv of
-        (o,[n],[]) -> 
+        (o,[n],[]) ->
             case foldM (flip id) defaultOptions o of
               Right opts -> return (opts,n)
               Left errorMessage -> ioError (userError (errorMessage ++ "\n" ++ helpMessage))
