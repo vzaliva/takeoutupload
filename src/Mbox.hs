@@ -1,5 +1,6 @@
 module Mbox
-    ( processMBFile
+    ( processMBFile,
+      Message(..)
     ) where
 
 import           Data.ByteString            (ByteString)

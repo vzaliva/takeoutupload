@@ -1,10 +1,11 @@
 module Main where
 
 import           Control.Monad
-import           System.Console.GetOpt
-import           System.Environment    (getArgs, getProgName)
-
+import qualified Data.ByteString.Lazy.Char8 as LB
+import           Data.List
 import           Mbox
+import           System.Console.GetOpt
+import           System.Environment         (getArgs, getProgName)
 
 data Options = Options
     { optVerbose :: Bool
@@ -67,7 +68,14 @@ main =
     do
       (opts, inputfile) <- getArgs >>= parseOpts
       msgs <- processMBFile inputfile
---      let msgs = drop opts.optSkip msgs in
-      putStr inputfile
-
+      let msgs' = drop (optSkip opts) msgs in
+        let msgs'' = case optLimit opts of
+                     Nothing -> msgs'
+                     Just n  -> take n msgs' in
+          do
+            putStrLn "Hi!" ;;
+            ;; putStrLn (show (optSkip opts))
+            ;; putStrLn (show (optLimit opts))
+            ;; putStrLn (show (length msgs''))
+            ;; mapM_ (putStrLn . LB.unpack . fromLine) msgs''
 
