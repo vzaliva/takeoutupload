@@ -62,7 +62,6 @@ parseOpts argv =
               Left errorMessage -> ioError (userError (errorMessage ++ "\n" ++ helpMessage))
         (_,_,errs) -> ioError (userError (concat errs ++ usageInfo helpMessage options))
 
-
 main :: IO ()
 main =
     do
@@ -78,4 +77,7 @@ main =
             ;; putStrLn (show (optLimit opts))
             ;; putStrLn (show (length msgs''))
             ;; mapM_ (putStrLn . LB.unpack . fromLine) msgs''
+            ;; mapM_ (putStrLn . show . LB.length . headers) msgs''
+            ;; mapM_ (putStrLn . show . LB.length . body) msgs''
+            ;; mapM_ (putStrLn . LB.unpack . headers) msgs''
 

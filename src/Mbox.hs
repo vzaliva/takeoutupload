@@ -23,7 +23,7 @@ readMessage (from:xs) =
   if lbsw "From " from then
     let
       (mblines, rest) = break (lbsw "From ") xs
-      (hlines, blines) = break (\x -> LB.length x > 0) mblines
+      (hlines, blines) = break (\x -> LB.length x == 1 && LB.head x == '\r') mblines
       blines' = map unmungeFrom blines in
       return (Message { fromLine = from,
                         headers   = LB.unlines hlines,
