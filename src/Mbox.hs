@@ -26,8 +26,8 @@ readMessage (from:xs) =
       (hlines, blines) = break (\x -> LB.length x == 1 && LB.head x == '\r') mblines
       blines' = map unmungeFrom blines in
       return (Message { fromLine = from,
-                        headers   = LB.unlines hlines,
-                        body      = LB.unlines blines'}, rest)
+                        headers  = LB.unlines hlines,
+                        body     = LB.unlines blines'}, rest)
   else
     Nothing
   where
