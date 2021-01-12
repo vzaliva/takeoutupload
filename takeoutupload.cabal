@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 577565552362ca9eaeefaf55d66f7218fa20acf2ed8c0d65e8e85ca8649e1831
+-- hash: 8d0d61a395e60f9e04f2fb397d289649f2f281a76569be4c721e061abd918f42
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -37,7 +37,6 @@ library
   build-depends:
       base >=4.7 && <5
     , bytestring
-    , email-header
     , imap
     , regex-tdfa
   default-language: Haskell2010
@@ -52,7 +51,6 @@ executable takeoutupload-exe
   build-depends:
       base >=4.7 && <5
     , bytestring
-    , email-header
     , imap
     , regex-tdfa
     , takeoutupload
@@ -69,7 +67,6 @@ test-suite takeoutupload-test
   build-depends:
       base >=4.7 && <5
     , bytestring
-    , email-header
     , imap
     , regex-tdfa
     , takeoutupload

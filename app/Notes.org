@@ -1,18 +1,9 @@
 * Docs
   - [[https://developers.google.com/gmail/imap/imap-extensions#access_to_gmail_labels_x-gm-labels][GMail IMAP extensions]]
   - [[https://imapsync.lamiral.info/FAQ.d/FAQ.Gmail.txt][Note]] on GMail throttling 
-  - [[https://gist.github.com/chrisdone/47a9e22672b54dedc87dec8b415e8127][Email message parsing in Haskell in 2018]]
 * Packages
   - [[https://hackage.haskell.org/package/imap][imap]]
-  - [[https://github.com/knrafto/email-header][emial-header]]
 * Plan
-  - Command line options
-    - Skip N first messages
-    - Process N messages then stop
-  - Write my own ~mbox~ parser.
-    + Returns ~[(from:ByteString,fromDate:Date,headrs:ByteString, body:ByteString)]~
-    + De-mangle /">From"/.
-    + Lazy!
   - Extract headers: ~Message-ID~, ~X-Gmail-Labels~.
   - Check if message already exists
   - Append to mbox with first label (or default if missing)
