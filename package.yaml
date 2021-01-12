@@ -24,7 +24,9 @@ dependencies:
 - base >= 4.7 && < 5
 - imap
 - bytestring
+- case-insensitive
 - regex-tdfa
+- split
 
 library:
   source-dirs: src

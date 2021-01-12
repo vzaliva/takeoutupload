@@ -4,7 +4,11 @@ module Main where
 
 import           Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as LB
+import           Data.CaseInsensitive       (CI)
+import qualified Data.CaseInsensitive       as CI
+import           Data.Char                  (isSpace)
 import           Data.List
+import           Data.List.Split
 import           Mbox
 import           System.Console.GetOpt
 import           System.Environment         (getArgs, getProgName)
@@ -74,14 +78,28 @@ unfoldHeader (LB.uncons -> Just ('\r', LB.uncons -> Just ('\n', LB.uncons -> Jus
 unfoldHeader (LB.uncons -> Just ('\r', xs)) = unfoldHeader xs
 unfoldHeader (LB.uncons -> Just (x, xs)) = LB.cons x (unfoldHeader xs)
 
-splitAtChar :: Char -> LB.ByteString -> Maybe (LB.ByteString, LB.ByteString)
-splitAtChar c s = do
-  i <- LB.elemIndex c s
-  let (n,v) = (LB.splitAt i s)
-  return (n, LB.tail v)
+splitHeader :: LB.ByteString -> Maybe [(CI LB.ByteString, LB.ByteString)]
+splitHeader =
+  let split s = do
+        i <- LB.elemIndex ':' s
+        let (n,v) = LB.splitAt i s
+        return (CI.mk n, LB.tail v) in
+    sequence . map split . LB.lines
 
-splitHeader :: LB.ByteString -> Maybe [(LB.ByteString, LB.ByteString)]
-splitHeader = sequence . map (splitAtChar ':') . LB.lines
+data Headers =  Headers {
+      msgid  :: String,
+      labels :: [String]
+      } deriving Show
+
+extractHeaders :: LB.ByteString -> Maybe Headers
+extractHeaders rawh = do
+  hassoc <- splitHeader (unfoldHeader rawh)
+  let trim = dropWhileEnd isSpace . dropWhile isSpace
+  let findh name = find ((==) (CI.mk (LB.pack name)) . fst) hassoc >>= (return . trim . LB.unpack . snd) in
+    do
+    msgid <- findh "message-id"
+    labels <- findh "X-Gmail-Labels"
+    return Headers { msgid = msgid, labels = fmap trim (splitOn "," labels)}
 
 main :: IO ()
 main =
@@ -93,12 +111,10 @@ main =
                      Nothing -> msgs'
                      Just n  -> take n msgs' in
           do
-            putStrLn "Hi!" ;;
-            ;; putStrLn (show (optSkip opts))
-            ;; putStrLn (show (optLimit opts))
+            putStr "Processing: " ;;
             ;; putStrLn (show (length msgs''))
-            ;; mapM_ (putStrLn . LB.unpack . fromLine) msgs''
-            ;; mapM_ (putStrLn . show . splitHeader . unfoldHeader . headers) msgs''
+--            ;; mapM_ (putStrLn . LB.unpack . fromLine) msgs''
+            ;; mapM_ (putStrLn . show . extractHeaders . headers) msgs''
 --            ;; mapM_ (putStrLn . show . LB.length . body) msgs''
 --            ;; mapM_ (putStrLn . LB.unpack . headers) msgs''
 

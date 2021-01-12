@@ -8,3 +8,4 @@
   - Check if message already exists
   - Append to mbox with first label (or default if missing)
   - Set other labels using Gmail extensions
+    (may need to do label mapping using special folder names)
