@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 module Main where
 
 import           Control.Monad
@@ -62,6 +64,25 @@ parseOpts argv =
               Left errorMessage -> ioError (userError (errorMessage ++ "\n" ++ helpMessage))
         (_,_,errs) -> ioError (userError (concat errs ++ usageInfo helpMessage options))
 
+-- Per RFC 2822
+-- "Unfolding is accomplished by simply removing any CRLF
+--  that is immediately followed by WSP."
+unfoldHeader :: LB.ByteString -> LB.ByteString
+unfoldHeader (LB.uncons -> Nothing) = LB.empty
+unfoldHeader (LB.uncons -> Just ('\r', LB.uncons -> Just ('\n', LB.uncons -> Just(' ',xs)))) = LB.cons ' ' (unfoldHeader xs)
+unfoldHeader (LB.uncons -> Just ('\r', LB.uncons -> Just ('\n', LB.uncons -> Just('\t',xs)))) = LB.cons '\t' (unfoldHeader xs)
+unfoldHeader (LB.uncons -> Just ('\r', xs)) = unfoldHeader xs
+unfoldHeader (LB.uncons -> Just (x, xs)) = LB.cons x (unfoldHeader xs)
+
+splitAtChar :: Char -> LB.ByteString -> Maybe (LB.ByteString, LB.ByteString)
+splitAtChar c s = do
+  i <- LB.elemIndex c s
+  let (n,v) = (LB.splitAt i s)
+  return (n, LB.tail v)
+
+splitHeader :: LB.ByteString -> Maybe [(LB.ByteString, LB.ByteString)]
+splitHeader = sequence . map (splitAtChar ':') . LB.lines
+
 main :: IO ()
 main =
     do
@@ -77,7 +98,7 @@ main =
             ;; putStrLn (show (optLimit opts))
             ;; putStrLn (show (length msgs''))
             ;; mapM_ (putStrLn . LB.unpack . fromLine) msgs''
-            ;; mapM_ (putStrLn . show . LB.length . headers) msgs''
-            ;; mapM_ (putStrLn . show . LB.length . body) msgs''
-            ;; mapM_ (putStrLn . LB.unpack . headers) msgs''
+            ;; mapM_ (putStrLn . show . splitHeader . unfoldHeader . headers) msgs''
+--            ;; mapM_ (putStrLn . show . LB.length . body) msgs''
+--            ;; mapM_ (putStrLn . LB.unpack . headers) msgs''
 
