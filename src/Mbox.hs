@@ -1,3 +1,18 @@
+{-|
+Module      : Mbox
+Description : MBox file parser
+Copyright   : (c) Vadim Zaliva, 2020
+License     : GPL-3
+Maintainer  : lord@crocodile.org
+Stability   : experimental
+
+MBox file parser. It does not parse individual message headers but
+rather splits the mailbox into "messages" consisting of headers and
+body as ByteStrings. For body it performs ">From" unmungling.
+
+The implementation supposed to be "lazy" and if properly used will
+allow to process a mailbox witout loading it into memory.
+-}
 module Mbox
     ( processMBFile,
       Message(..)
@@ -11,6 +26,7 @@ import           Data.Maybe
 import           System.IO
 import           Text.Regex.TDFA
 
+-- | Message consists of "From" line separator, headears and body
 data Message = Message {
       fromLine :: LB.ByteString,
       headers  :: LB.ByteString,
@@ -41,6 +57,7 @@ processMB ls = case readMessage ls of
                  Nothing      -> []
                  Just (m,ls') -> m:(processMB ls')
 
+-- | Reads mbox file as list of messages
 processMBFile :: FilePath -> IO [Message]
 processMBFile file = do
     bs <- LB.readFile file

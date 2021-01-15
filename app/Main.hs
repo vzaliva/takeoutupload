@@ -68,7 +68,7 @@ parseOpts argv =
               Left errorMessage -> ioError (userError (errorMessage ++ "\n" ++ helpMessage))
         (_,_,errs) -> ioError (userError (concat errs ++ usageInfo helpMessage options))
 
--- Per RFC 2822
+-- | Unfold header lines per RFC 2822:
 -- "Unfolding is accomplished by simply removing any CRLF
 --  that is immediately followed by WSP."
 unfoldHeader :: LB.ByteString -> LB.ByteString
@@ -78,6 +78,7 @@ unfoldHeader (LB.uncons -> Just ('\r', LB.uncons -> Just ('\n', LB.uncons -> Jus
 unfoldHeader (LB.uncons -> Just ('\r', xs)) = unfoldHeader xs
 unfoldHeader (LB.uncons -> Just (x, xs)) = LB.cons x (unfoldHeader xs)
 
+-- | Split header line into header name (case-insensitive) and value
 splitHeader :: LB.ByteString -> Maybe [(CI LB.ByteString, LB.ByteString)]
 splitHeader =
   let split s = do
@@ -86,11 +87,13 @@ splitHeader =
         return (CI.mk n, LB.tail v) in
     sequence . map split . LB.lines
 
+-- | Message headers we are interested in
 data Headers =  Headers {
       msgid  :: String,
       labels :: [String]
       } deriving Show
 
+-- | Given message header block, try to extract relevant headers
 extractHeaders :: LB.ByteString -> Maybe Headers
 extractHeaders rawh = do
   hassoc <- splitHeader (unfoldHeader rawh)
