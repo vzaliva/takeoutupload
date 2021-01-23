@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bf617dd4235ffb65225490d2e97c81e431f28825d3c530ab82996486b43e476f
+-- hash: 0d88eb3c174d5cd2f809dfe7c0b7dd95fbd8582953597519e9ab3357334c9fb8
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -38,7 +38,13 @@ library
       base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , foldl
     , imap
+    , lens-family-core
+    , pipes
+    , pipes-bytestring
+    , pipes-group
+    , pipes-parse
     , regex-tdfa
     , split
   default-language: Haskell2010
@@ -54,7 +60,13 @@ executable takeoutupload-exe
       base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , foldl
     , imap
+    , lens-family-core
+    , pipes
+    , pipes-bytestring
+    , pipes-group
+    , pipes-parse
     , regex-tdfa
     , split
     , takeoutupload
@@ -72,7 +84,13 @@ test-suite takeoutupload-test
       base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , foldl
     , imap
+    , lens-family-core
+    , pipes
+    , pipes-bytestring
+    , pipes-group
+    , pipes-parse
     , regex-tdfa
     , split
     , takeoutupload

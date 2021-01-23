@@ -18,11 +18,19 @@ module Mbox
       Message(..)
     ) where
 
+import           Control.Foldl              (mconcat, purely)
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString.Char8      as SB
 import qualified Data.ByteString.Lazy.Char8 as LB
 import           Data.List
 import           Data.Maybe
+import           Lens.Family                (view)
+import           Pipes
+import qualified Pipes.ByteString           as PB
+import           Pipes.Group                as PG
+import           Pipes.Parse
+import qualified Pipes.Prelude              as P
+import           Prelude                    hiding (mconcat)
 import           System.IO
 import           Text.Regex.TDFA
 
@@ -32,6 +40,21 @@ data Message = Message {
       headers  :: LB.ByteString,
       body     :: LB.ByteString
     } deriving (Read, Show)
+
+parseMessages :: Pipe ByteString Message IO ()
+parseMessages = return ()
+
+-- https://stackoverflow.com/questions/37632027/haskell-pipes-how-to-repeatedly-perform-a-takewhile-operation-on-a-bytestring
+mconcats :: (Monad m, Monoid b) => PB.FreeT (Producer b m) m r -> Producer b m r
+mconcats = PG.folds (<>) mempty id
+
+splitLines :: Producer ByteString IO () -> Producer ByteString IO ()
+splitLines = mconcats . view PB.lines
+
+-- | Reads mbox file as list of messages
+processMBFile :: Handle -> Producer Message IO ()
+processMBFile hfile =
+  splitLines (PB.fromHandle hfile) >-> parseMessages
 
 readMessage :: [LB.ByteString] -> Maybe (Message,[LB.ByteString])
 readMessage [] = Nothing
@@ -57,9 +80,4 @@ processMB ls = case readMessage ls of
                  Nothing      -> []
                  Just (m,ls') -> m:(processMB ls')
 
--- | Reads mbox file as list of messages
-processMBFile :: FilePath -> IO [Message]
-processMBFile file = do
-    bs <- LB.readFile file
-    return (processMB (LB.lines bs))
 

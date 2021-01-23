@@ -27,6 +27,13 @@ dependencies:
 - case-insensitive
 - regex-tdfa
 - split
+- pipes
+- pipes-bytestring
+- lens-family-core
+- pipes-parse
+- pipes-group
+- foldl
+
 
 library:
   source-dirs: src
