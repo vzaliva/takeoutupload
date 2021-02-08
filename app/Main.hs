@@ -10,8 +10,11 @@ import           Data.Char                  (isSpace)
 import           Data.List
 import           Data.List.Split
 import           Mbox
+import           Pipes
+import qualified Pipes.Prelude              as P
 import           System.Console.GetOpt
 import           System.Environment         (getArgs, getProgName)
+import           System.IO                  (IOMode (..), openFile, withFile)
 
 data Options = Options
     { optVerbose :: Bool
@@ -107,17 +110,22 @@ extractHeaders rawh = do
 main :: IO ()
 main =
     do
-      (opts, inputfile) <- getArgs >>= parseOpts
-      msgs <- processMBFile inputfile
-      let msgs' = drop (optSkip opts) msgs in
-        let msgs'' = case optLimit opts of
-                     Nothing -> msgs'
-                     Just n  -> take n msgs' in
-          do
-            putStr "Processing: " ;;
-            ;; putStrLn (show (length msgs''))
+      (opts, inputfile) <- getArgs >>= parseOpts ;
+      withFile inputfile ReadMode
+        (\f ->
+           runEffect $
+           processMBFile f >->
+           P.drop (optSkip opts) >->
+           (case optLimit opts of
+               Nothing -> cat
+               Just n  -> P.take n) >->
+           P.drain
+        )
+
+--                 do
+--                   putStr "Processing: "  ;;
+--                   ;; putStrLn (show (length msgs''))
 --            ;; mapM_ (putStrLn . LB.unpack . fromLine) msgs''
-            ;; mapM_ (putStrLn . show . extractHeaders . headers) msgs''
+--                   ;; mapM_ (putStrLn . show . extractHeaders . headers) msgs''
 --            ;; mapM_ (putStrLn . show . LB.length . body) msgs''
 --            ;; mapM_ (putStrLn . LB.unpack . headers) msgs''
-
