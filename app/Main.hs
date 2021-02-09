@@ -107,25 +107,30 @@ extractHeaders rawh = do
     labels <- findh "X-Gmail-Labels"
     return Headers { msgid = msgid, labels = fmap trim (splitOn "," labels)}
 
+processMessage :: Message -> Effect IO ()
+processMessage m = do
+    (lift . putStrLn) "====== Processing:"
+    (lift . putStrLn) "--- From:"
+    (lift . putStrLn . LB.unpack . fromLine) m
+    (lift . putStrLn) "--- Relevant Headers:"
+    (lift . putStrLn . show . extractHeaders . headers) m
+    (lift . putStrLn) "--- Body length:"
+    (lift . putStrLn . show . LB.length . body) m
+    (lift . putStrLn) "--- All headers:"
+    (lift . putStrLn . LB.unpack . headers) m
+
 main :: IO ()
 main =
     do
       (opts, inputfile) <- getArgs >>= parseOpts ;
       withFile inputfile ReadMode
         (\f ->
-           runEffect $
-           processMBFile f >->
-           P.drop (optSkip opts) >->
-           (case optLimit opts of
-               Nothing -> cat
-               Just n  -> P.take n) >->
-           P.drain
+           let p =
+                 (processMBFile f >->
+                  P.drop (optSkip opts) >->
+                  (case optLimit opts of
+                     Nothing -> cat
+                     Just n  -> P.take n)) in
+           runEffect $ for p processMessage
         )
 
---                 do
---                   putStr "Processing: "  ;;
---                   ;; putStrLn (show (length msgs''))
---            ;; mapM_ (putStrLn . LB.unpack . fromLine) msgs''
---                   ;; mapM_ (putStrLn . show . extractHeaders . headers) msgs''
---            ;; mapM_ (putStrLn . show . LB.length . body) msgs''
---            ;; mapM_ (putStrLn . LB.unpack . headers) msgs''
