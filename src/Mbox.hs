@@ -15,34 +15,65 @@ allow to process a mailbox witout loading it into memory.
 -}
 module Mbox
     ( processMBFile,
-      Message(..)
+      Message(..),
+      ParseException(..)
     ) where
 
-import           Control.Foldl              (mconcat, purely)
-import           Data.ByteString            (ByteString)
-import qualified Data.ByteString.Char8      as SB
-import qualified Data.ByteString.Lazy.Char8 as LB
+import           Control.Exception     (Exception, throwIO, try)
+import           Control.Foldl         (mconcat, purely)
+import           Control.Monad         (unless)
+import           Data.ByteString       (ByteString)
+import qualified Data.ByteString.Char8 as SB
 import           Data.List
 import           Data.Maybe
-import           Lens.Family                (view)
+import           Debug.Trace
+import           Lens.Family           (view)
 import           Pipes
-import qualified Pipes.ByteString           as PB
-import           Pipes.Group                as PG
+import qualified Pipes.ByteString      as PB
+import           Pipes.Group           as PG
 import           Pipes.Parse
-import qualified Pipes.Prelude              as P
-import           Prelude                    hiding (mconcat)
+import qualified Pipes.Prelude         as P
+import           Prelude               hiding (mconcat)
 import           System.IO
 import           Text.Regex.TDFA
 
+data ParseException = NoFrom SB.ByteString
+    deriving Show
+instance Exception ParseException
+
 -- | Message consists of "From" line separator, headears and body
 data Message = Message {
-      fromLine :: LB.ByteString,
-      headers  :: LB.ByteString,
-      body     :: LB.ByteString
+      fromLine :: SB.ByteString,
+      headers  :: SB.ByteString,
+      body     :: SB.ByteString
     } deriving (Read, Show)
 
+-- Predicate checking if given String prefix (1st argument) matches
+-- given ByteString
+lbsw :: String -> ByteString -> Bool
+lbsw p s = SB.isPrefixOf (SB.pack p) s
+
+parseMessage :: ByteString -> Pipe ByteString Message IO ()
+parseMessage from =
+    let
+      (hproducer, bproducer) = PB.breakOn (SB.pack "\r")
+      bproducer1 = P.map unmungeFrom bproducer
+      blines = produceAll bproducer
+      hlines = produceAll hproducer
+    in
+      yeld (Message { fromLine = from,
+                      headers  = SB.unlines hlines,
+                      body     = SB.unlines blines'})
+  where
+    unmungeFrom x = if x =~ ">+From " then SB.tail x else x
+
 parseMessages :: Pipe ByteString Message IO ()
-parseMessages = return ()
+parseMessages = do
+  from <- await
+  if lbsw "From " from then
+    P.takeWhile (not . lbsw "From ") >-> parseMessage from
+  else
+     lift $ throwIO (NoFrom from)
 
 -- https://stackoverflow.com/questions/37632027/haskell-pipes-how-to-repeatedly-perform-a-takewhile-operation-on-a-bytestring
 mconcats :: (Monad m, Monoid b) => PB.FreeT (Producer b m) m r -> Producer b m r
@@ -56,26 +87,31 @@ processMBFile :: Handle -> Producer Message IO ()
 processMBFile hfile =
   splitLines (PB.fromHandle hfile) >-> parseMessages
 
-readMessage :: [LB.ByteString] -> Maybe (Message,[LB.ByteString])
+
+
+
+
+
+readMessage :: [SB.ByteString] -> Maybe (Message,[SB.ByteString])
 readMessage [] = Nothing
 readMessage (from:xs) =
   if lbsw "From " from then
     let
       (mblines, rest) = break (lbsw "From ") xs
-      (hlines, blines) = break (\x -> LB.length x == 1 && LB.head x == '\r') mblines
+      (hlines, blines) = break (\x -> SB.length x == 1 && SB.head x == '\r') mblines
       blines' = map unmungeFrom blines in
       return (Message { fromLine = from,
-                        headers  = LB.unlines hlines,
-                        body     = LB.unlines blines'}, rest)
+                        headers  = SB.unlines hlines,
+                        body     = SB.unlines blines'}, rest)
   else
     Nothing
   where
-    lbsw p s = LB.isPrefixOf (LB.pack p) s
+    lbsw p s = SB.isPrefixOf (SB.pack p) s
     unmungeFrom x = let fromreg = ">+From " in
-      if x =~ fromreg then LB.tail x else x
+      if x =~ fromreg then SB.tail x else x
 
 
-processMB :: [LB.ByteString] -> [Message]
+processMB :: [SB.ByteString] -> [Message]
 processMB ls = case readMessage ls of
                  Nothing      -> []
                  Just (m,ls') -> m:(processMB ls')
