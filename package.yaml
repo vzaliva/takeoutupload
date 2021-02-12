@@ -33,6 +33,7 @@ dependencies:
 - pipes-parse
 - pipes-group
 - foldl
+- transformers
 
 
 library:

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0d88eb3c174d5cd2f809dfe7c0b7dd95fbd8582953597519e9ab3357334c9fb8
+-- hash: 4f5c1b83e49e86456dbcb4f941e519739142b7c933f395b96f9a9569345e066c
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -47,6 +47,7 @@ library
     , pipes-parse
     , regex-tdfa
     , split
+    , transformers
   default-language: Haskell2010
 
 executable takeoutupload-exe
@@ -70,6 +71,7 @@ executable takeoutupload-exe
     , regex-tdfa
     , split
     , takeoutupload
+    , transformers
   default-language: Haskell2010
 
 test-suite takeoutupload-test
@@ -94,4 +96,5 @@ test-suite takeoutupload-test
     , regex-tdfa
     , split
     , takeoutupload
+    , transformers
   default-language: Haskell2010
