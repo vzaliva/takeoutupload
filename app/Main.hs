@@ -128,6 +128,7 @@ main =
            let p =
                  (processMBFile f >->
                   P.drop (optSkip opts)
+-- TODO: implement LIMIT
 --                  >->
 --                  (case optLimit opts of
 --                     Nothing -> cat

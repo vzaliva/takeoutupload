@@ -61,6 +61,7 @@ lbsw p s = SB.isPrefixOf (SB.pack p) s
 unmungeFrom :: SB.ByteString -> SB.ByteString
 unmungeFrom x = if x =~ ">+From " then SB.tail x else x
 
+-- TODO: implment
 drawWhile :: Monad m => (a -> Bool) -> Parser a m (Maybe [a])
 drawWhile f = do
     p <- S.get
