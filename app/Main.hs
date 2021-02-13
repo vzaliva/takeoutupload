@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Control.Exception     (Exception, throwIO, try)
 import           Control.Monad
 import qualified Data.ByteString.Char8 as SB
 import           Data.CaseInsensitive  (CI)
@@ -128,7 +129,6 @@ main =
            let p =
                  (processMBFile f >->
                   P.drop (optSkip opts)
--- TODO: implement LIMIT
 --                  >->
 --                  (case optLimit opts of
 --                     Nothing -> cat
@@ -136,7 +136,12 @@ main =
                  )
            in
              do
-               runEffect $ for p processMessage
-               return ()
+               restp <- runEffect $ for p processMessage
+               rest <- next restp
+               case rest of
+                 Left _      -> return () -- all done
+                 Right (s,_) ->
+                   -- unprocessed data remains
+                   throwIO (Garbage s)
         )
 
