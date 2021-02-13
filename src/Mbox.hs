@@ -61,18 +61,23 @@ lbsw p s = SB.isPrefixOf (SB.pack p) s
 unmungeFrom :: SB.ByteString -> SB.ByteString
 unmungeFrom x = if x =~ ">+From " then SB.tail x else x
 
--- TODO: implment
-drawWhile :: Monad m => (a -> Bool) -> Parser a m (Maybe [a])
-drawWhile f = do
-    p <- S.get
-    x <- lift (next p)
-    case x of
-        Left   r      -> do
-            S.put (return r)
-            return Nothing
-        Right (a, p') -> do
-            S.put p'
-            return (Just [a])
+{-| Draws elements from producer until it is empty or given predicate
+    no longer holds for the next drawn element. The element for
+    which it did not hold remains in the stream.
+-}
+drawWhile :: Monad m => (a -> Bool) -> Parser a m [a]
+drawWhile p = go id
+  where
+    go diffAs = do
+        x <- draw
+        case x of
+            Nothing -> return (diffAs [])
+            Just a  ->
+              if p a then
+                go (diffAs . (a:))
+              else do
+                unDraw a
+                return (diffAs [])
 
 parseMessage :: Parser SB.ByteString IO (Maybe Message)
 parseMessage = do
@@ -85,10 +90,12 @@ parseMessage = do
         do
             -- headers until first empty line
             hlines <- drawWhile ((/=) (SB.pack "\r"))
+            -- skip empty line
+            skip
             -- body until next "From" or end of stream
             mblines <- drawWhile (not . lbsw "From ")
             case (hlines, mblines) of
-              (Just hlines, Just mblines) ->
+              (_:_, _:_) ->
                 let blines = map unmungeFrom mblines in
                   return (Just (Message { fromLine = from,
                                           headers  = SB.unlines hlines,
