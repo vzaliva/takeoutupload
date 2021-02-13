@@ -22,20 +22,19 @@ module Mbox
       ParseException(..)
     ) where
 
-import           Control.Exception                (Exception, throwIO, try)
-import qualified Control.Monad.Trans.State.Strict as S
-import           Data.ByteString                  (ByteString)
-import qualified Data.ByteString.Char8            as SB
+import           Control.Exception     (Exception, throwIO, try)
+import           Data.ByteString       (ByteString)
+import qualified Data.ByteString.Char8 as SB
 import           Data.List
 import           Data.Maybe
 import           Debug.Trace
-import           Lens.Family                      (view)
+import           Lens.Family           (view)
 import           Pipes
-import qualified Pipes.ByteString                 as PB
-import           Pipes.Group                      as PG
-import           Pipes.Parse                      as PP
-import qualified Pipes.Prelude                    as P
-import           Prelude                          hiding (mconcat)
+import qualified Pipes.ByteString      as PB
+import           Pipes.Group           as PG
+import           Pipes.Parse           as PP
+import qualified Pipes.Prelude         as P
+import           Prelude               hiding (mconcat)
 import           System.IO
 import           Text.Regex.TDFA
 
