@@ -117,8 +117,21 @@ processMessage m = do
     (lift . putStrLn . show . extractHeaders . headers) m
     (lift . putStrLn) "--- Body length:"
     (lift . putStrLn . show . SB.length . body) m
-    (lift . putStrLn) "--- All headers:"
-    (lift . putStrLn . SB.unpack . headers) m
+    --(lift . putStrLn) "--- All headers:"
+    --(lift . putStrLn . SB.unpack . headers) m
+
+
+emptyP :: Producer SB.ByteString IO ()
+emptyP = return ()
+
+ptake :: Monad m => Int -> Pipe a a m (Producer SB.ByteString IO ())
+ptake = go
+  where
+    go 0 = return emptyP
+    go n = do
+        a <- await
+        yield a
+        go (n-1)
 
 main :: IO ()
 main =
@@ -129,10 +142,10 @@ main =
            let p =
                  (processMBFile f >->
                   P.drop (optSkip opts)
---                  >->
---                  (case optLimit opts of
---                     Nothing -> cat
---                     Just n  -> P.take n)
+                  >->
+                  (case optLimit opts of
+                     Nothing -> cat
+                     Just n  -> ptake n)
                  )
            in
              do
