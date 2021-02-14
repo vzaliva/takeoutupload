@@ -40,7 +40,7 @@ import           Text.Regex.TDFA
 
 
 -- TODO: unsued for now
-data ParseException = NoFrom SB.ByteString | Garbage SB.ByteString
+data ParseException = MboxParseError SB.ByteString
     deriving Show
 instance Exception ParseException
 

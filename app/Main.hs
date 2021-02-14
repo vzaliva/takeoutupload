@@ -155,6 +155,6 @@ main =
                  Left _      -> return () -- all done
                  Right (s,_) ->
                    -- unprocessed data remains
-                   throwIO (Garbage s)
+                   throwIO (MboxParseError s)
         )
 
