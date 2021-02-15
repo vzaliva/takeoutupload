@@ -124,15 +124,6 @@ processMessage m = do
 emptyP :: Producer SB.ByteString IO ()
 emptyP = return ()
 
-ptake :: Monad m => Int -> Pipe a a m (Producer SB.ByteString IO ())
-ptake = go
-  where
-    go 0 = return emptyP
-    go n = do
-        a <- await
-        yield a
-        go (n-1)
-
 main :: IO ()
 main =
     do
@@ -145,7 +136,7 @@ main =
                   >->
                   (case optLimit opts of
                      Nothing -> cat
-                     Just n  -> ptake n)
+                     Just n  -> emptyP <$ P.take n)
                  )
            in
              do
