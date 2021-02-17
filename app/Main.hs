@@ -10,6 +10,8 @@ import qualified Data.CaseInsensitive  as CI
 import           Data.Char             (isSpace)
 import           Data.List
 import           Data.List.Split
+import           Data.Set              (Set)
+import qualified Data.Set              as Set
 import           Mbox
 import           Pipes
 import qualified Pipes.Prelude         as P
@@ -94,7 +96,7 @@ splitHeader =
 -- | Message headers we are interested in
 data Headers =  Headers {
       msgid  :: String,
-      labels :: [String]
+      labels :: Set String
       } deriving Show
 
 -- | Given message header block, try to extract relevant headers
@@ -106,20 +108,21 @@ extractHeaders rawh = do
     do
     msgid <- findh "message-id"
     labels <- findh "X-Gmail-Labels"
-    return Headers { msgid = msgid, labels = fmap trim (splitOn "," labels)}
+    return Headers { msgid = msgid,
+                     labels = Set.fromList (fmap trim (splitOn "," labels))
+                   }
 
 processMessage :: Message -> Effect IO ()
 processMessage m = do
-    (lift . putStrLn) "====== Processing:"
-    (lift . putStrLn) "--- From:"
-    (lift . putStrLn . SB.unpack . fromLine) m
-    (lift . putStrLn) "--- Relevant Headers:"
-    (lift . putStrLn . show . extractHeaders . headers) m
-    (lift . putStrLn) "--- Body length:"
-    (lift . putStrLn . show . SB.length . body) m
+    (liftIO . putStrLn) "====== Processing:"
+    (liftIO . putStrLn) "--- From:"
+    (liftIO . putStrLn . SB.unpack . fromLine) m
+    (liftIO . putStrLn) "--- Relevant Headers:"
+    (liftIO . putStrLn . show . extractHeaders . headers) m
+    (liftIO . putStrLn) "--- Body length:"
+    (liftIO . putStrLn . show . SB.length . body) m
     --(lift . putStrLn) "--- All headers:"
     --(lift . putStrLn . SB.unpack . headers) m
-
 
 emptyP :: Producer SB.ByteString IO ()
 emptyP = return ()
