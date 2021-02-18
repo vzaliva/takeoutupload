@@ -78,7 +78,7 @@ drawWhile p = go id
                 unDraw a
                 return (diffAs [])
 
-parseMessage :: Parser SB.ByteString IO (Maybe Message)
+parseMessage :: MonadIO m => Parser SB.ByteString m (Maybe Message)
 parseMessage = do
   from <- draw
   case from of
@@ -107,11 +107,12 @@ parseMessage = do
 mconcats :: (Monad m, Monoid b) => PB.FreeT (Producer b m) m r -> Producer b m r
 mconcats = PG.folds (<>) mempty id
 
-splitLines :: Producer SB.ByteString IO () -> Producer SB.ByteString IO ()
+splitLines :: MonadIO m => Producer SB.ByteString m () -> Producer SB.ByteString m ()
 splitLines = mconcats . view PB.lines
 
 -- | Reads mbox file as list of messages
-processMBFile :: Handle -> Producer Message IO (Producer SB.ByteString IO ())
+
+processMBFile :: MonadIO m => Handle -> Producer Message m (Producer SB.ByteString m ())
 processMBFile hfile =
   let bytes = PB.fromHandle hfile
       lines = splitLines bytes

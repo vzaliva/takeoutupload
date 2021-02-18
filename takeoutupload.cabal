@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ccd839e941b89c08f607fc2b5510f06e7d2bac6c49492c17a64ef1671cf522ef
+-- hash: 98964194d234f4f3b40ffde15dc5c72ee0157e6d95d7669198627e972f332bd8
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -42,6 +42,7 @@ library
     , foldl
     , imap
     , lens-family-core
+    , mtl
     , pipes
     , pipes-bytestring
     , pipes-group
@@ -66,6 +67,7 @@ executable takeoutupload-exe
     , foldl
     , imap
     , lens-family-core
+    , mtl
     , pipes
     , pipes-bytestring
     , pipes-group
@@ -92,6 +94,7 @@ test-suite takeoutupload-test
     , foldl
     , imap
     , lens-family-core
+    , mtl
     , pipes
     , pipes-bytestring
     , pipes-group

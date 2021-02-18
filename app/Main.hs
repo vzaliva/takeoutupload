@@ -2,22 +2,25 @@
 
 module Main where
 
-import           Control.Exception     (Exception, throwIO, try)
+import           Control.Exception                (Exception, throwIO, try)
 import           Control.Monad
-import qualified Data.ByteString.Char8 as SB
-import           Data.CaseInsensitive  (CI)
-import qualified Data.CaseInsensitive  as CI
-import           Data.Char             (isSpace)
+import           Control.Monad.Trans.State.Strict
+import qualified Data.ByteString.Char8            as SB
+import           Data.CaseInsensitive             (CI)
+import qualified Data.CaseInsensitive             as CI
+import           Data.Char                        (isSpace)
 import           Data.List
 import           Data.List.Split
-import           Data.Set              (Set)
-import qualified Data.Set              as Set
+import           Data.Set                         (Set)
+import qualified Data.Set                         as Set
 import           Mbox
 import           Pipes
-import qualified Pipes.Prelude         as P
+import qualified Pipes.Lift                       as PL
+import qualified Pipes.Prelude                    as P
 import           System.Console.GetOpt
-import           System.Environment    (getArgs, getProgName)
-import           System.IO             (IOMode (..), openFile, withFile)
+import           System.Environment               (getArgs, getProgName)
+import           System.IO                        (IOMode (..), openFile,
+                                                   withFile)
 
 data Options = Options
     { optVerbose :: Bool
@@ -112,19 +115,35 @@ extractHeaders rawh = do
                      labels = Set.fromList (fmap trim (splitOn "," labels))
                    }
 
-processMessage :: Message -> Effect IO ()
-processMessage m = do
-    (liftIO . putStrLn) "====== Processing:"
-    (liftIO . putStrLn) "--- From:"
-    (liftIO . putStrLn . SB.unpack . fromLine) m
-    (liftIO . putStrLn) "--- Relevant Headers:"
-    (liftIO . putStrLn . show . extractHeaders . headers) m
-    (liftIO . putStrLn) "--- Body length:"
-    (liftIO . putStrLn . show . SB.length . body) m
-    --(lift . putStrLn) "--- All headers:"
-    --(lift . putStrLn . SB.unpack . headers) m
+-- state
+data ST = ST { folders:: Set String} deriving Show
 
-emptyP :: Producer SB.ByteString IO ()
+-- initial state
+st0 :: ST
+st0 = ST { folders = Set.empty }
+
+processMessage :: Message -> Effect (StateT ST IO) ()
+processMessage m =
+  let
+    addFolders :: Maybe Headers -> ST -> ST
+    addFolders h s =
+      case h of
+        Just h' -> ST {folders = Set.union (labels h') (folders s)}
+        Nothing -> s
+    h = extractHeaders (headers m) in
+    do
+      (liftIO . putStrLn) "====== Processing:"
+      (liftIO . putStrLn) "--- From:"
+      (liftIO . putStrLn) ((SB.unpack . fromLine) m)
+      (liftIO . putStrLn) "--- Relevant Headers:"
+      (liftIO . putStrLn) (show h)
+      (liftIO . putStrLn) "--- Body length:"
+      (liftIO . putStrLn) ((show . SB.length . body) m)
+    --(liftIO . putStrLn) "--- All headers:"
+    --(liftIO . putStrLn) ((SB.unpack . headers) m)
+    -- modify (addFolders h)
+
+emptyP :: MonadIO m => Producer SB.ByteString m ()
 emptyP = return ()
 
 main :: IO ()
@@ -143,8 +162,9 @@ main =
                  )
            in
              do
-               restp <- runEffect $ for p processMessage
-               rest <- next restp
+               (restp, st) <- runStateT (runEffect $ for p processMessage) st0
+               putStrLn $ "End state: " <> show st
+               rest <- next (PL.evalStateP st0 restp)
                case rest of
                  Left _      -> return () -- all done
                  Right (s,_) ->
