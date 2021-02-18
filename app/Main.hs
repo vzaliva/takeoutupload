@@ -132,6 +132,7 @@ processMessage m =
         Nothing -> s
     h = extractHeaders (headers m) in
     do
+      (lift . modify) (addFolders h)
       (liftIO . putStrLn) "====== Processing:"
       (liftIO . putStrLn) "--- From:"
       (liftIO . putStrLn) ((SB.unpack . fromLine) m)
@@ -141,7 +142,7 @@ processMessage m =
       (liftIO . putStrLn) ((show . SB.length . body) m)
     --(liftIO . putStrLn) "--- All headers:"
     --(liftIO . putStrLn) ((SB.unpack . headers) m)
-    -- modify (addFolders h)
+
 
 emptyP :: MonadIO m => Producer SB.ByteString m ()
 emptyP = return ()
