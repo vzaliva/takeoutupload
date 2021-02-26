@@ -23,6 +23,11 @@ import           System.Environment               (getArgs, getProgName)
 import           System.IO                        (IOMode (..), openFile,
                                                    withFile)
 
+data Config = Config
+              { username :: String
+              , password :: String
+              } deriving Show
+
 data Options = Options
     { optVerbose :: Bool
     , optDryRun  :: Bool
@@ -148,12 +153,19 @@ processMessage m =
 emptyP :: MonadIO m => Producer SB.ByteString m ()
 emptyP = return ()
 
+readConfig :: String -> IO Config
+readConfig file =  do
+  cfge <- Cfg.readfile Cfg.emptyCP file
+  let cfg = forceEither cfge
+  let user = forceEither $ Cfg.get cfg "DEFAULT" "user"
+  let pass = forceEither $ Cfg.get cfg "DEFAULT" "password"
+  return Config { username = user, password = pass}
+
 main :: IO ()
 main =
     do
       (opts, inputfile) <- getArgs >>= parseOpts
-      cfge <- Cfg.readfile Cfg.emptyCP (optConfig opts)
-      let cfg = forceEither cfge
+      config  <- readConfig (optConfig opts)
       withFile inputfile ReadMode
         (\f ->
            let p =
