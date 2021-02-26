@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 98964194d234f4f3b40ffde15dc5c72ee0157e6d95d7669198627e972f332bd8
+-- hash: 7926fee1260b587da7a00555fabbc127307a5e56017801f5ae91d6433d1da94c
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -35,7 +35,9 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      ConfigFile
+    , MissingH
+    , base >=4.7 && <5
     , bytestring
     , case-insensitive
     , containers
@@ -60,7 +62,9 @@ executable takeoutupload-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      ConfigFile
+    , MissingH
+    , base >=4.7 && <5
     , bytestring
     , case-insensitive
     , containers
@@ -87,7 +91,9 @@ test-suite takeoutupload-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      ConfigFile
+    , MissingH
+    , base >=4.7 && <5
     , bytestring
     , case-insensitive
     , containers

@@ -1,7 +1,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Main where
-
 import           Control.Exception                (Exception, throwIO, try)
 import           Control.Monad
 import           Control.Monad.Trans.State.Strict
@@ -9,6 +8,8 @@ import qualified Data.ByteString.Char8            as SB
 import           Data.CaseInsensitive             (CI)
 import qualified Data.CaseInsensitive             as CI
 import           Data.Char                        (isSpace)
+import qualified Data.ConfigFile                  as Cfg
+import           Data.Either.Utils
 import           Data.List
 import           Data.List.Split
 import           Data.Set                         (Set)
@@ -150,7 +151,9 @@ emptyP = return ()
 main :: IO ()
 main =
     do
-      (opts, inputfile) <- getArgs >>= parseOpts ;
+      (opts, inputfile) <- getArgs >>= parseOpts
+      cfge <- Cfg.readfile Cfg.emptyCP (optConfig opts)
+      let cfg = forceEither cfge
       withFile inputfile ReadMode
         (\f ->
            let p =

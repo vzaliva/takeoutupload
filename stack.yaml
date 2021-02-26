@@ -37,6 +37,8 @@ packages:
 extra-deps:
 - imap-0.3.0.9@sha256:0329acf6fb9b9368387765cf85e9edd523c81e57f3ea8212cec7d4644578f46d,8862
 - rolling-queue-0.1@sha256:9283b4267a60f98652ec69d24dda6028e164c37c84e4ee8519379a02dc3876aa,1676
+- ConfigFile-1.1.4@sha256:ca56261e1deae6ef958a337b03812987bfd94ab37b047e27f262bc3137813165,2056
+
 
 # extra-deps:
 # - acme-missiles-0.3

@@ -36,6 +36,8 @@ dependencies:
 - transformers
 - mtl
 - containers
+- ConfigFile
+- MissingH
 
 
 library:
