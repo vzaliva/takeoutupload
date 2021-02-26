@@ -24,3 +24,4 @@ cabal.project.local~
 .stack-work/
 *~
 /stack.yaml.lock
+/takeoutupload.cfg
