@@ -15,6 +15,9 @@ import           Data.List.Split
 import           Data.Set                         (Set)
 import qualified Data.Set                         as Set
 import           Mbox
+import           Network.Connection
+import           Network.IMAP
+import           Network.IMAP.Types
 import           Pipes
 import qualified Pipes.Lift                       as PL
 import qualified Pipes.Prelude                    as P
@@ -122,11 +125,11 @@ extractHeaders rawh = do
                    }
 
 -- state
-data ST = ST { folders:: Set String} deriving Show
+data ST = ST {
+  folders :: Set String
+  , conn  :: IMAPConnection
+  }
 
--- initial state
-st0 :: ST
-st0 = ST { folders = Set.empty }
 
 processMessage :: Message -> Effect (StateT ST IO) ()
 processMessage m =
@@ -134,7 +137,7 @@ processMessage m =
     addFolders :: Maybe Headers -> ST -> ST
     addFolders h s =
       case h of
-        Just h' -> ST {folders = Set.union (labels h') (folders s)}
+        Just h' -> s {folders = Set.union (labels h') (folders s)}
         Nothing -> s
     h = extractHeaders (headers m) in
     do
@@ -166,6 +169,9 @@ main =
     do
       (opts, inputfile) <- getArgs >>= parseOpts
       config  <- readConfig (optConfig opts)
+      let tls = TLSSettingsSimple False False False
+      let params = ConnectionParams "imap.gmail.com" 993 (Just tls) Nothing
+      server <- connectServer params Nothing
       withFile inputfile ReadMode
         (\f ->
            let p =
@@ -178,9 +184,11 @@ main =
                  )
            in
              do
+               let st0 = ST { folders = Set.empty, conn = server }
                (restp, st) <- runStateT (runEffect $ for p processMessage) st0
-               putStrLn $ "End state: " <> show st
-               rest <- next (PL.evalStateP st0 restp)
+               putStrLn $ "End state: " <> show (folders st)
+               simpleFormat $ logout (conn st)
+               rest <- next (PL.evalStateP st restp)
                case rest of
                  Left _      -> return () -- all done
                  Right (s,_) ->

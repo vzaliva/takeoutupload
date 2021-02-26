@@ -38,6 +38,7 @@ dependencies:
 - containers
 - ConfigFile
 - MissingH
+- connection
 
 
 library:

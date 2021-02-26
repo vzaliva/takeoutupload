@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7926fee1260b587da7a00555fabbc127307a5e56017801f5ae91d6433d1da94c
+-- hash: 589ef7fa433dc22934fd866bb2a5fe92a5ce40e70c781c0f54b0eb672455c356
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -40,6 +40,7 @@ library
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , connection
     , containers
     , foldl
     , imap
@@ -67,6 +68,7 @@ executable takeoutupload-exe
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , connection
     , containers
     , foldl
     , imap
@@ -96,6 +98,7 @@ test-suite takeoutupload-test
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , connection
     , containers
     , foldl
     , imap
