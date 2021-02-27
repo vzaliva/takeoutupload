@@ -1,30 +1,30 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Main where
-import           Control.Exception                (Exception, throwIO, try)
+import           Control.Exception                  (Exception, throwIO, try)
 import           Control.Monad
 import           Control.Monad.Trans.State.Strict
-import qualified Data.ByteString.Char8            as SB
-import           Data.CaseInsensitive             (CI)
-import qualified Data.CaseInsensitive             as CI
-import           Data.Char                        (isSpace)
-import qualified Data.ConfigFile                  as Cfg
+import qualified Data.ByteString.Char8              as SB
+import           Data.CaseInsensitive               (CI)
+import qualified Data.CaseInsensitive               as CI
+import           Data.Char                          (isSpace)
+import qualified Data.ConfigFile                    as Cfg
 import           Data.Either.Utils
 import           Data.List
 import           Data.List.Split
-import           Data.Set                         (Set)
-import qualified Data.Set                         as Set
+import           Data.Set                           (Set)
+import qualified Data.Set                           as Set
 import           Mbox
 import           Network.Connection
-import           Network.IMAP
-import           Network.IMAP.Types
+import           Network.HaskellNet.IMAP.Connection (IMAPConnection)
+import           Network.HaskellNet.IMAP.SSL
 import           Pipes
-import qualified Pipes.Lift                       as PL
-import qualified Pipes.Prelude                    as P
+import qualified Pipes.Lift                         as PL
+import qualified Pipes.Prelude                      as P
 import           System.Console.GetOpt
-import           System.Environment               (getArgs, getProgName)
-import           System.IO                        (IOMode (..), openFile,
-                                                   withFile)
+import           System.Environment                 (getArgs, getProgName)
+import           System.IO                          (IOMode (..), openFile,
+                                                     withFile)
 
 data Config = Config
               { username :: String
@@ -141,7 +141,7 @@ processMessage m =
     h = extractHeaders (headers m) in
     do
       c <- ((lift . gets) conn)
-      noop c
+      (liftIO . noop) c
       (lift . modify) (addFolders h)
       (liftIO . putStrLn) "====== Processing:"
       (liftIO . putStrLn) "--- From:"
@@ -170,9 +170,8 @@ main =
     do
       (opts, inputfile) <- getArgs >>= parseOpts
       config  <- readConfig (optConfig opts)
-      let tls = TLSSettingsSimple False False False
-      let params = ConnectionParams "imap.gmail.com" 993 (Just tls) Nothing
-      server <- connectServer params Nothing
+      server <- connectIMAPSSL "imap.gmail.com"
+      login server (username config) (password config)
       withFile inputfile ReadMode
         (\f ->
            let p =
@@ -188,7 +187,7 @@ main =
                let st0 = ST { folders = Set.empty, conn = server }
                (restp, st) <- runStateT (runEffect $ for p processMessage) st0
                putStrLn $ "End state: " <> show (folders st)
-               simpleFormat $ logout (conn st)
+               logout (conn st)
                rest <- next (PL.evalStateP st restp)
                case rest of
                  Left _      -> return () -- all done

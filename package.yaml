@@ -22,7 +22,6 @@ description:         Please see the README on GitHub at <https://github.com/vzal
 
 dependencies:
 - base >= 4.7 && < 5
-- imap
 - bytestring
 - case-insensitive
 - regex-tdfa
@@ -39,6 +38,8 @@ dependencies:
 - ConfigFile
 - MissingH
 - connection
+- HaskellNet
+- HaskellNet-SSL
 
 
 library:

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 589ef7fa433dc22934fd866bb2a5fe92a5ce40e70c781c0f54b0eb672455c356
+-- hash: 039e86addb74809b4df7e03d24a1f4c9856e34232aee0f432864672da12719ba
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -36,6 +36,8 @@ library
       src
   build-depends:
       ConfigFile
+    , HaskellNet
+    , HaskellNet-SSL
     , MissingH
     , base >=4.7 && <5
     , bytestring
@@ -43,7 +45,6 @@ library
     , connection
     , containers
     , foldl
-    , imap
     , lens-family-core
     , mtl
     , pipes
@@ -64,6 +65,8 @@ executable takeoutupload-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       ConfigFile
+    , HaskellNet
+    , HaskellNet-SSL
     , MissingH
     , base >=4.7 && <5
     , bytestring
@@ -71,7 +74,6 @@ executable takeoutupload-exe
     , connection
     , containers
     , foldl
-    , imap
     , lens-family-core
     , mtl
     , pipes
@@ -94,6 +96,8 @@ test-suite takeoutupload-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       ConfigFile
+    , HaskellNet
+    , HaskellNet-SSL
     , MissingH
     , base >=4.7 && <5
     , bytestring
@@ -101,7 +105,6 @@ test-suite takeoutupload-test
     , connection
     , containers
     , foldl
-    , imap
     , lens-family-core
     , mtl
     , pipes

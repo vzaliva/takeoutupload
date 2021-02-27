@@ -2,7 +2,7 @@
   - [[https://developers.google.com/gmail/imap/imap-extensions#access_to_gmail_labels_x-gm-labels][GMail IMAP extensions]]
   - [[https://imapsync.lamiral.info/FAQ.d/FAQ.Gmail.txt][Note]] on GMail throttling 
 * Packages
-  - [[https://hackage.haskell.org/package/imap][imap]]
+  - [[https://hackage.haskell.org/package/HaskellNet][HaskellNet]]
 * Plan
   - Extract headers: ~Message-ID~, ~X-Gmail-Labels~.
   - Check if message already exists
