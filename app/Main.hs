@@ -25,6 +25,7 @@ import           System.Console.GetOpt
 import           System.Environment                 (getArgs, getProgName)
 import           System.IO                          (IOMode (..), openFile,
                                                      withFile)
+import           Text.Pretty.Simple                 (pPrint)
 
 data Config = Config
               { username :: String
@@ -170,6 +171,8 @@ main =
       config  <- readConfig (optConfig opts)
       conn <- connectIMAPSSL "imap.gmail.com"
       login conn (username config) (password config)
+      mblist <- list conn
+      -- mapM (pPrint . show) (map snd mblist)
       withFile inputfile ReadMode
         (\f ->
            let p =
@@ -182,7 +185,7 @@ main =
                  )
            in
              do
-               let st0 = ST { folders = Set.empty }
+               let st0 = ST { folders = Set.fromList (map snd mblist) }
                (restp, st) <- runStateT (runEffect $ for p (processMessage conn)) st0
                putStrLn $ "End state: " <> show (folders st)
                logout conn

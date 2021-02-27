@@ -40,6 +40,7 @@ dependencies:
 - connection
 - HaskellNet
 - HaskellNet-SSL
+- pretty-simple
 
 
 library:
