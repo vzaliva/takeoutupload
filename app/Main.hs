@@ -130,7 +130,6 @@ data ST = ST {
   , conn  :: IMAPConnection
   }
 
-
 processMessage :: Message -> Effect (StateT ST IO) ()
 processMessage m =
   let
@@ -141,6 +140,8 @@ processMessage m =
         Nothing -> s
     h = extractHeaders (headers m) in
     do
+      c <- ((lift . gets) conn)
+      noop c
       (lift . modify) (addFolders h)
       (liftIO . putStrLn) "====== Processing:"
       (liftIO . putStrLn) "--- From:"
