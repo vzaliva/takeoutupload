@@ -127,11 +127,10 @@ extractHeaders rawh = do
 -- state
 data ST = ST {
   folders :: Set String
-  , conn  :: IMAPConnection
   }
 
-processMessage :: Message -> Effect (StateT ST IO) ()
-processMessage m =
+processMessage :: IMAPConnection -> Message -> Effect (StateT ST IO) ()
+processMessage conn m =
   let
     addFolders :: Maybe Headers -> ST -> ST
     addFolders h s =
@@ -140,8 +139,7 @@ processMessage m =
         Nothing -> s
     h = extractHeaders (headers m) in
     do
-      c <- ((lift . gets) conn)
-      (liftIO . noop) c
+      (liftIO . noop) conn
       (lift . modify) (addFolders h)
       (liftIO . putStrLn) "====== Processing:"
       (liftIO . putStrLn) "--- From:"
@@ -170,8 +168,8 @@ main =
     do
       (opts, inputfile) <- getArgs >>= parseOpts
       config  <- readConfig (optConfig opts)
-      server <- connectIMAPSSL "imap.gmail.com"
-      login server (username config) (password config)
+      conn <- connectIMAPSSL "imap.gmail.com"
+      login conn (username config) (password config)
       withFile inputfile ReadMode
         (\f ->
            let p =
@@ -184,10 +182,10 @@ main =
                  )
            in
              do
-               let st0 = ST { folders = Set.empty, conn = server }
-               (restp, st) <- runStateT (runEffect $ for p processMessage) st0
+               let st0 = ST { folders = Set.empty }
+               (restp, st) <- runStateT (runEffect $ for p (processMessage conn)) st0
                putStrLn $ "End state: " <> show (folders st)
-               logout (conn st)
+               logout conn
                rest <- next (PL.evalStateP st restp)
                case rest of
                  Left _      -> return () -- all done
