@@ -12,6 +12,7 @@ import qualified Data.ConfigFile                    as Cfg
 import           Data.Either.Utils
 import           Data.List
 import           Data.List.Split
+import           Data.Maybe
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Mbox
@@ -133,24 +134,27 @@ data ST = ST {
 processMessage :: IMAPConnection -> Message -> Effect (StateT ST IO) ()
 processMessage conn m =
   let
-    addFolders :: Maybe Headers -> ST -> ST
-    addFolders h s =
-      case h of
-        Just h' -> s {folders = Set.union (labels h') (folders s)}
-        Nothing -> s
-    h = extractHeaders (headers m) in
-    do
-      (liftIO . noop) conn
-      (lift . modify) (addFolders h)
-      (liftIO . putStrLn) "====== Processing:"
-      (liftIO . putStrLn) "--- From:"
-      (liftIO . putStrLn) ((SB.unpack . fromLine) m)
-      (liftIO . putStrLn) "--- Relevant Headers:"
-      (liftIO . putStrLn) (show h)
-      (liftIO . putStrLn) "--- Body length:"
-      (liftIO . putStrLn) ((show . SB.length . body) m)
-    --(liftIO . putStrLn) "--- All headers:"
-    --(liftIO . putStrLn) ((SB.unpack . headers) m)
+    addFolders :: Headers -> ST -> ST
+    addFolders h' s = s {folders = Set.union (labels h') (folders s)}
+    in
+    case extractHeaders (headers m) of
+      Just h ->
+        do
+          (liftIO . noop) conn
+          oldfolders <- (lift . gets) folders
+          let newfolders = Set.difference (labels h) oldfolders
+          (liftIO . pPrint) (show newfolders)
+          (lift . modify) (addFolders h)
+          (liftIO . putStrLn) "====== Processing:"
+          (liftIO . putStrLn) "--- From:"
+          (liftIO . putStrLn) ((SB.unpack . fromLine) m)
+          (liftIO . putStrLn) "--- Relevant Headers:"
+          (liftIO . putStrLn) (show h)
+          (liftIO . putStrLn) "--- Body length:"
+          (liftIO . putStrLn) ((show . SB.length . body) m)
+        --(liftIO . putStrLn) "--- All headers:"
+        --(liftIO . putStrLn) ((SB.unpack . headers) m)
+      Nothing -> return ()
 
 
 emptyP :: MonadIO m => Producer SB.ByteString m ()
@@ -187,7 +191,8 @@ main =
              do
                let st0 = ST { folders = Set.fromList (map snd mblist) }
                (restp, st) <- runStateT (runEffect $ for p (processMessage conn)) st0
-               putStrLn $ "End state: " <> show (folders st)
+               putStrLn $ "End state:"
+               mapM pPrint (Set.toList (folders st))
                logout conn
                rest <- next (PL.evalStateP st restp)
                case rest of
