@@ -11,7 +11,7 @@ import           Data.Char                          (isSpace)
 import qualified Data.ConfigFile                    as Cfg
 import           Data.Either.Utils
 import           Data.List
-import           Data.List.Split
+import           Data.List.Split                    (splitOn)
 import           Data.Maybe
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
@@ -27,11 +27,13 @@ import           System.Environment                 (getArgs, getProgName)
 import           System.IO                          (IOMode (..), openFile,
                                                      withFile)
 import           Text.Pretty.Simple                 (pPrint)
+import           Text.Regex.TDFA
 
 data Config = Config
-              { username :: String
-              , password :: String
-              } deriving Show
+              { username   :: String
+              , password   :: String
+              , skiplabels :: Regex
+              }
 
 data Options = Options
     { optVerbose :: Bool
@@ -113,11 +115,13 @@ data Headers =  Headers {
       labels :: Set String
       } deriving Show
 
+trim :: String -> String
+trim = dropWhileEnd isSpace . dropWhile isSpace
+
 -- | Given message header block, try to extract relevant headers
 extractHeaders :: SB.ByteString -> Maybe Headers
 extractHeaders rawh = do
   hassoc <- splitHeader (unfoldHeader rawh)
-  let trim = dropWhileEnd isSpace . dropWhile isSpace
   let findh name = find ((==) (CI.mk (SB.pack name)) . fst) hassoc >>= (return . trim . SB.unpack . snd) in
     do
     msgid <- findh "message-id"
@@ -131,20 +135,21 @@ data ST = ST {
   folders :: Set String
   }
 
-processMessage :: IMAPConnection -> Message -> Effect (StateT ST IO) ()
-processMessage conn m =
+processMessage :: Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
+processMessage cfg conn m =
   let
-    addFolders :: Headers -> ST -> ST
-    addFolders h' s = s {folders = Set.union (labels h') (folders s)}
+    addFolders :: Set String -> ST -> ST
+    addFolders l s = s {folders = Set.union l (folders s)}
     in
     case extractHeaders (headers m) of
       Just h ->
         do
-          (liftIO . noop) conn
+          --(liftIO . noop) conn
           oldfolders <- (lift . gets) folders
-          let newfolders = Set.difference (labels h) oldfolders
+          let l = Set.filter (not . matchTest (skiplabels cfg)) (labels h)
+          let newfolders = Set.difference l oldfolders
           (liftIO . pPrint) (show newfolders)
-          (lift . modify) (addFolders h)
+          (lift . modify) (addFolders l)
           (liftIO . putStrLn) "====== Processing:"
           (liftIO . putStrLn) "--- From:"
           (liftIO . putStrLn) ((SB.unpack . fromLine) m)
@@ -164,9 +169,11 @@ readConfig :: String -> IO Config
 readConfig file =  do
   cfge <- Cfg.readfile Cfg.emptyCP file
   let cfg = forceEither cfge
-  let user = forceEither $ Cfg.get cfg "DEFAULT" "user"
-  let pass = forceEither $ Cfg.get cfg "DEFAULT" "password"
-  return Config { username = user, password = pass}
+  let user = forceEither $ Cfg.get cfg "account" "user"
+  let pass = forceEither $ Cfg.get cfg "account" "password"
+  let skip = (forceEither $ Cfg.get cfg "labels" "skip" ) :: String
+  return Config { username = user, password = pass,
+                  skiplabels = makeRegex skip}
 
 main :: IO ()
 main =
@@ -190,7 +197,7 @@ main =
            in
              do
                let st0 = ST { folders = Set.fromList (map snd mblist) }
-               (restp, st) <- runStateT (runEffect $ for p (processMessage conn)) st0
+               (restp, st) <- runStateT (runEffect $ for p (processMessage config conn)) st0
                putStrLn $ "End state:"
                mapM pPrint (Set.toList (folders st))
                logout conn
