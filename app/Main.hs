@@ -30,9 +30,10 @@ import           Text.Pretty.Simple                 (pPrint)
 import           Text.Regex.TDFA
 
 data Config = Config
-              { username   :: String
-              , password   :: String
-              , skiplabels :: Regex
+              { username    :: String
+              , password    :: String
+              , striplabels :: Regex
+              , skiplabels  :: Regex
               }
 
 data Options = Options
@@ -140,25 +141,29 @@ processMessage cfg conn m =
   let
     addFolders :: Set String -> ST -> ST
     addFolders l s = s {folders = Set.union l (folders s)}
+    testRegexp :: Set String -> Regex -> Bool
+    testRegexp s r = not $ Set.null (Set.filter (matchTest r) s)
     in
     case extractHeaders (headers m) of
       Just h ->
-        do
           --(liftIO . noop) conn
-          oldfolders <- (lift . gets) folders
-          let l = Set.filter (not . matchTest (skiplabels cfg)) (labels h)
-          let newfolders = Set.difference l oldfolders
-          (liftIO . pPrint) (show newfolders)
-          (lift . modify) (addFolders l)
-          (liftIO . putStrLn) "====== Processing:"
-          (liftIO . putStrLn) "--- From:"
-          (liftIO . putStrLn) ((SB.unpack . fromLine) m)
-          (liftIO . putStrLn) "--- Relevant Headers:"
-          (liftIO . putStrLn) (show h)
-          (liftIO . putStrLn) "--- Body length:"
-          (liftIO . putStrLn) ((show . SB.length . body) m)
-        --(liftIO . putStrLn) "--- All headers:"
-        --(liftIO . putStrLn) ((SB.unpack . headers) m)
+          if testRegexp (labels h) (skiplabels cfg) then
+            return ()
+          else do
+            let l = Set.filter (not . matchTest (striplabels cfg)) (labels h)
+            oldfolders <- (lift . gets) folders
+            let newfolders = Set.difference l oldfolders
+            (liftIO . pPrint) (show newfolders)
+            (lift . modify) (addFolders l)
+            (liftIO . putStrLn) "====== Processing:"
+            (liftIO . putStrLn) "--- From:"
+            (liftIO . putStrLn) ((SB.unpack . fromLine) m)
+            (liftIO . putStrLn) "--- Relevant Headers:"
+            (liftIO . putStrLn) (show h)
+            (liftIO . putStrLn) "--- Body length:"
+            (liftIO . putStrLn) ((show . SB.length . body) m)
+          --(liftIO . putStrLn) "--- All headers:"
+          --(liftIO . putStrLn) ((SB.unpack . headers) m)
       Nothing -> return ()
 
 
@@ -172,8 +177,12 @@ readConfig file =  do
   let user = forceEither $ Cfg.get cfg "account" "user"
   let pass = forceEither $ Cfg.get cfg "account" "password"
   let skip = (forceEither $ Cfg.get cfg "labels" "skip" ) :: String
-  return Config { username = user, password = pass,
-                  skiplabels = makeRegex skip}
+  let strip = (forceEither $ Cfg.get cfg "labels" "strip" ) :: String
+  return Config { username = user
+                , password = pass
+                , skiplabels = makeRegex skip
+                , striplabels = makeRegex strip
+                }
 
 main :: IO ()
 main =
