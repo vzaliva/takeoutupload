@@ -133,7 +133,8 @@ extractHeaders rawh = do
 
 -- state
 data ST = ST {
-  folders :: Set String
+  counter   :: Int
+  , folders :: Set String
   }
 
 processMessage :: Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
@@ -152,10 +153,12 @@ processMessage cfg conn m =
           else do
             let l = Set.filter (not . matchTest (striplabels cfg)) (labels h)
             oldfolders <- (lift . gets) folders
+            n <- (lift . gets) counter
+            (lift . modify) (\s -> s {counter = n+1})
             let newfolders = Set.difference l oldfolders
             (liftIO . pPrint) (show newfolders)
             (lift . modify) (addFolders l)
-            (liftIO . putStrLn) "====== Processing:"
+            (liftIO . putStrLn) ("====== Processing #" <> show n <> ":")
             (liftIO . putStrLn) "--- From:"
             (liftIO . putStrLn) ((SB.unpack . fromLine) m)
             (liftIO . putStrLn) "--- Relevant Headers:"
@@ -205,7 +208,9 @@ main =
                  )
            in
              do
-               let st0 = ST { folders = Set.fromList (map snd mblist) }
+               let st0 = ST { folders = Set.fromList (map snd mblist),
+                              counter = (optSkip opts)
+                            }
                (restp, st) <- runStateT (runEffect $ for p (processMessage config conn)) st0
                putStrLn $ "End state:"
                mapM pPrint (Set.toList (folders st))
