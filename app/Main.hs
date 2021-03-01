@@ -224,8 +224,6 @@ main =
                               counter = (optSkip opts)
                             }
                (restp, st) <- runStateT (runEffect $ for p (processMessage opts config conn)) st0
-               putStrLn $ "End state:"
-               mapM pPrint (Set.toList (folders st))
                logout conn
                rest <- next (PL.evalStateP st restp)
                case rest of
