@@ -137,14 +137,15 @@ data ST = ST {
   , folders :: Set String
   }
 
-createFolders :: IMAPConnection -> Bool -> Set String -> IO ()
-createFolders conn dry fset = do
+createFolders :: IMAPConnection -> Options -> Set String -> IO ()
+createFolders conn opts fset = do
   mapM_ (\f -> do
-          putStrLn ("\tCreating folder: " ++ (show f))
-          if dry then
-            return ()
-          else
-            create conn f
+            if optVerbose opts
+              then putStrLn ("\tCreating folder: " ++ (show f))
+              else return ()
+            if optDryRun opts
+              then return ()
+              else create conn f
        )
     (Set.toList fset)
 
@@ -166,7 +167,7 @@ processMessage opts cfg conn m =
             n <- (lift . gets) counter
             (lift . modify) (\s -> s {counter = n+1})
             let newfolders = Set.difference l oldfolders
-            liftIO $ createFolders conn (optDryRun opts) newfolders
+            liftIO $ createFolders conn opts newfolders
             (lift . modify) (addFolders l)
             (liftIO . putStrLn) ("====== Processing #" <> show n <> ":")
             {-
