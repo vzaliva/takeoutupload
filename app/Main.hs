@@ -1,7 +1,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Main where
-import           Control.Exception                  (Exception, throwIO, try)
+import           Control.Exception                  (Exception, throw, throwIO,
+                                                     try)
 import           Control.Monad
 import           Control.Monad.Trans.State.Strict
 import qualified Data.ByteString.Char8              as SB
@@ -28,6 +29,16 @@ import           System.IO                          (IOMode (..), openFile,
                                                      withFile)
 import           Text.Pretty.Simple                 (pPrint)
 import           Text.Regex.TDFA
+
+-- TODO: unsued for now
+data ImportException =
+  ParseError SB.ByteString
+  | MissingHeaders SB.ByteString
+  | DataLeft SB.ByteString
+  deriving Show
+
+instance Exception ImportException
+
 
 data Config = Config
               { username    :: String
@@ -110,26 +121,8 @@ splitHeader =
         return (CI.mk n, SB.tail v) in
     sequence . map split . SB.lines
 
--- | Message headers we are interested in
-data Headers =  Headers {
-      msgid  :: String,
-      labels :: Set String
-      } deriving Show
-
 trim :: String -> String
 trim = dropWhileEnd isSpace . dropWhile isSpace
-
--- | Given message header block, try to extract relevant headers
-extractHeaders :: SB.ByteString -> Maybe Headers
-extractHeaders rawh = do
-  hassoc <- splitHeader (unfoldHeader rawh)
-  let findh name = find ((==) (CI.mk (SB.pack name)) . fst) hassoc >>= (return . trim . SB.unpack . snd) in
-    do
-    msgid <- findh "message-id"
-    labels <- findh "X-Gmail-Labels"
-    return Headers { msgid = msgid,
-                     labels = Set.fromList (fmap trim (splitOn "," labels))
-                   }
 
 -- state
 data ST = ST {
@@ -138,7 +131,7 @@ data ST = ST {
   }
 
 createFolders :: IMAPConnection -> Options -> Set String -> IO ()
-createFolders conn opts fset = do
+createFolders conn opts fset =
   mapM_ (\f -> do
             if optVerbose opts
               then putStrLn ("\tCreating folder: " ++ (show f))
@@ -152,37 +145,38 @@ createFolders conn opts fset = do
 processMessage :: Options -> Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
 processMessage opts cfg conn m =
   let
-    addFolders :: Set String -> ST -> ST
-    addFolders l s = s {folders = Set.union l (folders s)}
     testRegexp :: Set String -> Regex -> Bool
     testRegexp s r = not $ Set.null (Set.filter (matchTest r) s)
-    in
-    case extractHeaders (headers m) of
-      Just h ->
-          if testRegexp (labels h) (skiplabels cfg) then
-            return ()
-          else do
-            let l = Set.filter (not . matchTest (striplabels cfg)) (labels h)
-            oldfolders <- (lift . gets) folders
-            n <- (lift . gets) counter
-            (lift . modify) (\s -> s {counter = n+1})
-            let newfolders = Set.difference l oldfolders
-            liftIO $ createFolders conn opts newfolders
-            (lift . modify) (addFolders l)
-            (liftIO . putStrLn) ("====== Processing #" <> show n <> ":")
-            {-
-            (liftIO . putStrLn) "--- From:"
-            (liftIO . putStrLn) ((SB.unpack . fromLine) m)
-            (liftIO . putStrLn) "--- Relevant Headers:"
-            (liftIO . putStrLn) (show h)
-            (liftIO . putStrLn) "--- Body length:"
-            (liftIO . putStrLn) ((show . SB.length . body) m)
-            (liftIO . putStrLn) "--- All headers:"
-            (liftIO . putStrLn) ((SB.unpack . headers) m)
-            -}
-      Nothing -> return ()
+  in do
+    let rawh = headers m
+    n <- (lift . gets) counter
+    lift $ modify (\s -> s {counter = n+1})
+    case splitHeader (unfoldHeader rawh) of
+      Nothing ->
+        throw $ ParseError rawh
+      Just hassoc ->
+        let findh name = find ((==) (CI.mk (SB.pack name)) . fst) hassoc >>= (Just . trim . SB.unpack . snd) in
+          -- at very least we need this field, to filter out Chat messages
+          -- which do not have MessageId
+          case findh "X-Gmail-Labels" of
+            Just l ->
+              let lset = Set.fromList (fmap trim (splitOn "," l)) in
+                if testRegexp lset (skiplabels cfg) then
+                  if optVerbose opts
+                  then liftIO $ putStrLn ("====== Skipping #" <> show n)
+                  else return ()
+                else do
+                  liftIO $ putStrLn ("====== Processing #" <> show n <> ":")
+                  let l' = Set.filter (not . matchTest (striplabels cfg)) lset
+                  oldfolders <- (lift . gets) folders
+                  let newfolders = Set.difference l' oldfolders
+                  liftIO $ createFolders conn opts newfolders
+                  lift $ modify (\s -> s {folders = Set.union l' (folders s)})
+                  liftIO $ putStrLn ("====== Processing #" <> show n <> ":")
+            Nothing ->
+              throw $ MissingHeaders rawh
 
-
+-- empty procducer
 emptyP :: MonadIO m => Producer SB.ByteString m ()
 emptyP = return ()
 
@@ -231,6 +225,6 @@ main =
                  Left _      -> return () -- all done
                  Right (s,_) ->
                    -- unprocessed data remains
-                   throwIO (MboxParseError s)
+                   throwIO (DataLeft s)
         )
 

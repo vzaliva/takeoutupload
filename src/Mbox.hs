@@ -19,10 +19,8 @@ allow to process a mailbox witout loading it into memory.
 module Mbox
     ( processMBFile,
       Message(..),
-      ParseException(..)
     ) where
 
-import           Control.Exception     (Exception, throwIO, try)
 import           Data.ByteString       (ByteString)
 import qualified Data.ByteString.Char8 as SB
 import           Data.List
@@ -38,11 +36,6 @@ import           Prelude               hiding (mconcat)
 import           System.IO
 import           Text.Regex.TDFA
 
-
--- TODO: unsued for now
-data ParseException = MboxParseError SB.ByteString
-    deriving Show
-instance Exception ParseException
 
 -- | Message consists of "From" line separator, headears and body
 data Message = Message {
