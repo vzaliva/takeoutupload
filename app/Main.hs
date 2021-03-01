@@ -137,8 +137,19 @@ data ST = ST {
   , folders :: Set String
   }
 
-processMessage :: Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
-processMessage cfg conn m =
+createFolders :: IMAPConnection -> Bool -> Set String -> IO ()
+createFolders conn dry fset = do
+  mapM_ (\f -> do
+          putStrLn ("\tCreating folder: " ++ (show f))
+          if dry then
+            return ()
+          else
+            create conn f
+       )
+    (Set.toList fset)
+
+processMessage :: Options -> Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
+processMessage opts cfg conn m =
   let
     addFolders :: Set String -> ST -> ST
     addFolders l s = s {folders = Set.union l (folders s)}
@@ -147,7 +158,6 @@ processMessage cfg conn m =
     in
     case extractHeaders (headers m) of
       Just h ->
-          --(liftIO . noop) conn
           if testRegexp (labels h) (skiplabels cfg) then
             return ()
           else do
@@ -156,17 +166,19 @@ processMessage cfg conn m =
             n <- (lift . gets) counter
             (lift . modify) (\s -> s {counter = n+1})
             let newfolders = Set.difference l oldfolders
-            (liftIO . pPrint) (show newfolders)
+            liftIO $ createFolders conn (optDryRun opts) newfolders
             (lift . modify) (addFolders l)
             (liftIO . putStrLn) ("====== Processing #" <> show n <> ":")
+            {-
             (liftIO . putStrLn) "--- From:"
             (liftIO . putStrLn) ((SB.unpack . fromLine) m)
             (liftIO . putStrLn) "--- Relevant Headers:"
             (liftIO . putStrLn) (show h)
             (liftIO . putStrLn) "--- Body length:"
             (liftIO . putStrLn) ((show . SB.length . body) m)
-          --(liftIO . putStrLn) "--- All headers:"
-          --(liftIO . putStrLn) ((SB.unpack . headers) m)
+            (liftIO . putStrLn) "--- All headers:"
+            (liftIO . putStrLn) ((SB.unpack . headers) m)
+            -}
       Nothing -> return ()
 
 
@@ -211,7 +223,7 @@ main =
                let st0 = ST { folders = Set.fromList (map snd mblist),
                               counter = (optSkip opts)
                             }
-               (restp, st) <- runStateT (runEffect $ for p (processMessage config conn)) st0
+               (restp, st) <- runStateT (runEffect $ for p (processMessage opts config conn)) st0
                putStrLn $ "End state:"
                mapM pPrint (Set.toList (folders st))
                logout conn
