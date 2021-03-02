@@ -16,6 +16,7 @@ import           Data.List.Split                    (splitOn)
 import           Data.Maybe
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
+import           Data.String.Utils                  (strip)
 import           Mbox
 import           Network.Connection
 import           Network.HaskellNet.IMAP.Connection (IMAPConnection)
@@ -121,8 +122,10 @@ splitHeader =
         return (CI.mk n, SB.tail v) in
     sequence . map split . SB.lines
 
-trim :: String -> String
-trim = dropWhileEnd isSpace . dropWhile isSpace
+-- | Quote IMAP folder name
+-- If it contains spaces, enclose in double quotation marks
+quoteFolder :: String -> String
+quoteFolder s = if elem ' ' s then "\"" ++ s ++ "\""  else s
 
 -- state
 data ST = ST {
@@ -138,7 +141,7 @@ createFolders conn opts fset =
               else return ()
             if optDryRun opts
               then return ()
-              else create conn f
+              else create conn (quoteFolder f)
        )
     (Set.toList fset)
 
@@ -155,12 +158,12 @@ processMessage opts cfg conn m =
       Nothing ->
         throw $ ParseError rawh
       Just hassoc ->
-        let findh name = find ((==) (CI.mk (SB.pack name)) . fst) hassoc >>= (Just . trim . SB.unpack . snd) in
+        let findh name = find ((==) (CI.mk (SB.pack name)) . fst) hassoc >>= (return . strip . SB.unpack . snd) in
           -- at very least we need this field, to filter out Chat messages
           -- which do not have MessageId
           case findh "X-Gmail-Labels" of
             Just l ->
-              let lset = Set.fromList (fmap trim (splitOn "," l)) in
+              let lset = Set.fromList (fmap strip (splitOn "," l)) in
                 if testRegexp lset (skiplabels cfg) then
                   if optVerbose opts
                   then liftIO $ putStrLn ("====== Skipping #" <> show n)
@@ -172,7 +175,6 @@ processMessage opts cfg conn m =
                   let newfolders = Set.difference l' oldfolders
                   liftIO $ createFolders conn opts newfolders
                   lift $ modify (\s -> s {folders = Set.union l' (folders s)})
-                  liftIO $ putStrLn ("====== Processing #" <> show n <> ":")
             Nothing ->
               throw $ MissingHeaders rawh
 
