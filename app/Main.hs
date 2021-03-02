@@ -40,12 +40,12 @@ data ImportException =
 
 instance Exception ImportException
 
-
 data Config = Config
               { username    :: String
               , password    :: String
               , striplabels :: Regex
               , skiplabels  :: Regex
+              , taglabel    :: String
               }
 
 data Options = Options
@@ -188,12 +188,14 @@ readConfig file =  do
   let cfg = forceEither cfge
   let user = forceEither $ Cfg.get cfg "account" "user"
   let pass = forceEither $ Cfg.get cfg "account" "password"
+  let tag = forceEither $ Cfg.get cfg "labels" "tag"
   let skip = (forceEither $ Cfg.get cfg "labels" "skip" ) :: String
   let strip = (forceEither $ Cfg.get cfg "labels" "strip" ) :: String
   return Config { username = user
                 , password = pass
                 , skiplabels = makeRegex skip
                 , striplabels = makeRegex strip
+                , taglabel = tag
                 }
 
 main :: IO ()
@@ -217,7 +219,13 @@ main =
                  )
            in
              do
-               let st0 = ST { folders = Set.fromList (map snd mblist),
+               let server_folders = Set.fromList (map snd mblist)
+               -- Make sure "tag" folder exists
+               let tagset = Set.singleton (taglabel config)
+               if Set.member (taglabel config) server_folders
+                 then return ()
+                 else createFolders conn opts tagset
+               let st0 = ST { folders = Set.union server_folders tagset,
                               counter = (optSkip opts)
                             }
                (restp, st) <- runStateT (runEffect $ for p (processMessage opts config conn)) st0
