@@ -136,12 +136,10 @@ data ST = ST {
 createFolders :: IMAPConnection -> Options -> Set String -> IO ()
 createFolders conn opts fset =
   mapM_ (\f -> do
-            if optVerbose opts
-              then putStrLn ("\tCreating folder: " ++ (show f))
-              else return ()
-            if optDryRun opts
-              then return ()
-              else create conn (quoteFolder f)
+            when (optVerbose opts)
+              $ putStrLn ("\tCreating folder: " ++ (show f))
+            unless (optDryRun opts)
+              $ create conn (quoteFolder f)
        )
     (Set.toList fset)
 
@@ -165,9 +163,8 @@ processMessage opts cfg conn m =
             Just l ->
               let lset = Set.fromList (fmap strip (splitOn "," l)) in
                 if testRegexp lset (skiplabels cfg) then
-                  if optVerbose opts
-                  then liftIO $ putStrLn ("====== Skipping #" <> show n)
-                  else return ()
+                  when (optVerbose opts)
+                    $ liftIO $ putStrLn ("====== Skipping #" <> show n)
                 else do
                   liftIO $ putStrLn ("====== Processing #" <> show n <> ":")
                   let l' = Set.filter (not . matchTest (striplabels cfg)) lset
@@ -222,9 +219,8 @@ main =
                let server_folders = Set.fromList (map snd mblist)
                -- Make sure "tag" folder exists
                let tagset = Set.singleton (taglabel config)
-               if Set.member (taglabel config) server_folders
-                 then return ()
-                 else createFolders conn opts tagset
+               unless (Set.member (taglabel config) server_folders)
+                 $ createFolders conn opts tagset
                let st0 = ST { folders = Set.union server_folders tagset,
                               counter = (optSkip opts)
                             }
