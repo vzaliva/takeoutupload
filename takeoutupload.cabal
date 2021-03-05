@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 71475bed75d97e119881e025542aaa9809cb7d6729b66df41e189c44e6871b89
+-- hash: e96f1461e2c1b734e0d90e298ab74b0c6baa4947b0a8505ed78c1f125b663660
 
 name:           takeoutupload
 version:        0.1.0.0
@@ -39,7 +39,7 @@ library
     , HaskellNet
     , HaskellNet-SSL
     , MissingH
-    , base >=4.7 && <5
+    , base
     , bytestring
     , case-insensitive
     , connection
@@ -69,7 +69,7 @@ executable takeoutupload-exe
     , HaskellNet
     , HaskellNet-SSL
     , MissingH
-    , base >=4.7 && <5
+    , base
     , bytestring
     , case-insensitive
     , connection
@@ -101,7 +101,7 @@ test-suite takeoutupload-test
     , HaskellNet
     , HaskellNet-SSL
     , MissingH
-    , base >=4.7 && <5
+    , base
     , bytestring
     , case-insensitive
     , connection
