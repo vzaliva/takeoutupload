@@ -6,9 +6,9 @@
 * Plan
   - Extract headers: ~Message-ID~, ~X-Gmail-Labels~.
   - Check if message already exists
-  - Append to mbox with first label (or default if missing)
-  - Set other labels using Gmail extensions
-    (may need to do label mapping using special folder names)
+  - APPEND to mbox with default label
+  - Append other labels using the STORE command in conjunction with the
+    +X-GM-LABELS attribute.
 * Testing
 *** Memory usage:
     mprof run <executable>

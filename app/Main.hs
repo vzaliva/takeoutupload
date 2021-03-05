@@ -31,7 +31,6 @@ import           System.IO                          (IOMode (..), openFile,
 import           Text.Pretty.Simple                 (pPrint)
 import           Text.Regex.TDFA
 
--- TODO: unsued for now
 data ImportException =
   ParseError SB.ByteString
   | MissingHeaders SB.ByteString
@@ -143,6 +142,14 @@ createFolders conn opts fset =
        )
     (Set.toList fset)
 
+
+uploadMessage :: IMAPConnection -> String -> Set String -> SB.ByteString -> IO ()
+uploadMessage conn tag folders msg =
+  let folders = Set.delete tag folders
+  in do
+    -- putStrLn (SB.unpack msg)
+    append conn (strip tag) msg
+
 processMessage :: Options -> Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
 processMessage opts cfg conn m =
   let
@@ -172,6 +179,9 @@ processMessage opts cfg conn m =
                   let newfolders = Set.difference l' oldfolders
                   liftIO $ createFolders conn opts newfolders
                   lift $ modify (\s -> s {folders = Set.union l' (folders s)})
+                  let crlf = SB.pack "\r\n"
+                  let rawmsg = (headers m) `SB.append` crlf `SB.append` (body m)
+                  liftIO $ uploadMessage conn (taglabel cfg) l' rawmsg
             Nothing ->
               throw $ MissingHeaders rawh
 
@@ -200,7 +210,11 @@ main =
     do
       (opts, inputfile) <- getArgs >>= parseOpts
       config  <- readConfig (optConfig opts)
-      conn <- connectIMAPSSL "imap.gmail.com"
+      conn <-
+        if optVerbose opts
+        then connectIMAPSSLWithSettings "imap.gmail.com"
+             (defaultSettingsIMAPSSL {sslLogToConsole = True})
+        else connectIMAPSSL "imap.gmail.com"
       login conn (username config) (password config)
       mblist <- list conn
       -- mapM (pPrint . show) (map snd mblist)
