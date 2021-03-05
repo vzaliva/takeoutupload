@@ -145,10 +145,11 @@ createFolders conn opts fset =
 
 uploadMessage :: IMAPConnection -> String -> Set String -> SB.ByteString -> IO ()
 uploadMessage conn tag folders msg =
-  let folders = Set.delete tag folders
+  let msglf = SB.filter ((/=) '\r') msg
+      folders = Set.delete tag folders
   in do
     -- putStrLn (SB.unpack msg)
-    append conn (strip tag) msg
+    append conn (strip tag) msglf
 
 processMessage :: Options -> Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
 processMessage opts cfg conn m =
@@ -179,8 +180,8 @@ processMessage opts cfg conn m =
                   let newfolders = Set.difference l' oldfolders
                   liftIO $ createFolders conn opts newfolders
                   lift $ modify (\s -> s {folders = Set.union l' (folders s)})
-                  let crlf = SB.pack "\r\n"
-                  let rawmsg = (headers m) `SB.append` crlf `SB.append` (body m)
+                  let lf = SB.pack "\n"
+                  let rawmsg = (headers m) `SB.append` lf `SB.append` (body m)
                   liftIO $ uploadMessage conn (taglabel cfg) l' rawmsg
             Nothing ->
               throw $ MissingHeaders rawh
