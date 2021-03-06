@@ -1,4 +1,5 @@
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE BlockArguments #-}
 
 module Main where
 import           Control.Exception                  (Exception, throw, throwIO,
@@ -144,18 +145,20 @@ createFolders conn opts fset =
     (Set.toList fset)
 
 
-uploadMessage :: IMAPConnection -> String -> String -> Set String -> SB.ByteString -> IO ()
-uploadMessage conn msgid tag folders msg =
+uploadMessage :: IMAPConnection -> String -> String -> String -> Set String -> SB.ByteString -> IO ()
+uploadMessage conn msgid msgdate tag folders msg =
   let msglf = SB.filter ((/=) '\r') msg
-      folders = Set.delete tag folders
+      folders' = Set.delete tag folders
   in do
     -- putStrLn (SB.unpack msg)
-    append conn (strip tag) msglf
-    uids <- search conn [HEADERs "Message-ID" msgid]
-    case uids of
-      uid:[] ->
-        store conn uid (PlusFlags [Seen])
-      _      -> throw IMAPAppendError
+    appendFull conn (strip tag) msglf (Just [Seen]) Nothing
+    -- Add labels
+    unless (Set.null folders') 
+      do
+        uids <- search conn [HEADERs "Message-ID" msgid]
+        case uids of
+          uid:[] -> store conn uid (PlusGmailLabels (Set.toList folders'))
+          _    -> throw IMAPAppendError
 
 processMessage :: Options -> Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
 processMessage opts cfg conn m =
@@ -188,9 +191,9 @@ processMessage opts cfg conn m =
                   lift $ modify (\s -> s {folders = Set.union l' (folders s)})
                   let lf = SB.pack "\n"
                   let rawmsg = (headers m) `SB.append` lf `SB.append` (body m)
-                  case findh "Message-ID" of
-                    Just mid -> liftIO $ uploadMessage conn mid (taglabel cfg) l' rawmsg
-                    Nothing -> throw $ MissingHeaders rawh
+                  case (findh "Message-ID",findh "Date") of
+                    (Just mid,Just md) -> liftIO $ uploadMessage conn mid md (taglabel cfg) l' rawmsg
+                    _ -> throw $ MissingHeaders rawh
             Nothing ->
               throw $ MissingHeaders rawh
 

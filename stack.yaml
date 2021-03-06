@@ -35,11 +35,12 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
-- HaskellNet-0.5.2
+- patched/HaskellNet
 - ConfigFile-1.1.4@sha256:ca56261e1deae6ef958a337b03812987bfd94ab37b047e27f262bc3137813165,2056
 - HaskellNet-SSL-0.3.4.1@sha256:3ca14dd69460a380cf69aed40654fb10c4c03e344632b6a9986568c87feda157,1843
 - connection-0.2.8@sha256:b33ed18b274e9d65ffefcda46ba3d6ff852bec1e7ffcb686985228dc52631c2e,1525
 - socks-0.5.6@sha256:bb051589a00d18301556dbff82d89955a5534baf91a5e050e5f3a65f3415609c,1299
+
 
 # extra-deps:
 # - acme-missiles-0.3
