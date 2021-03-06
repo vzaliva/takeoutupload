@@ -41,7 +41,7 @@ dependencies:
 - HaskellNet
 - HaskellNet-SSL
 - pretty-simple
-
+- old-time
 
 library:
   source-dirs: src

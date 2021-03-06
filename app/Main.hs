@@ -31,12 +31,16 @@ import           System.IO                          (IOMode (..), openFile,
                                                      withFile)
 import           Text.Pretty.Simple                 (pPrint)
 import           Text.Regex.TDFA
+import           System.Time
+import           Text.Read                          (readMaybe)
 
 data ImportException =
   ParseError SB.ByteString
   | MissingHeaders SB.ByteString
   | DataLeft SB.ByteString
   | IMAPAppendError
+  | MissingDateInFrom SB.ByteString
+  | InvalidDateFieldInFrom String SB.ByteString
   deriving Show
 
 instance Exception ImportException
@@ -144,14 +148,76 @@ createFolders conn opts fset =
        )
     (Set.toList fset)
 
+readMonth :: String -> Month
+readMonth "Jan" = January
+readMonth "Feb" = February
+readMonth "Mar" = March
+readMonth "Apr" = April
+readMonth "May" = May
+readMonth "Jun" = June
+readMonth "Jul" = July
+readMonth "Aug" = August
+readMonth "Sep" = September
+readMonth "Oct" = October
+readMonth "Nov" = November
+readMonth "Dec" = December
 
-uploadMessage :: IMAPConnection -> String -> String -> String -> Set String -> SB.ByteString -> IO ()
-uploadMessage conn msgid msgdate tag folders msg =
+readDay :: String -> Day
+readDay "Sun" = Sunday
+readDay "Mon" = Monday
+readDay "Tue" = Tuesday
+readDay "Wed" = Wednesday
+readDay "Thu" = Thursday
+readDay "Fri" = Friday
+readDay "Sat" = Saturday
+
+{- Parse mailbox "From" separator line, extracting date.
+   Example:
+
+   From 1461441616689256664@xxx Sun Mar 02 05:48:54 +0000 2014
+-}
+parseFromDate :: SB.ByteString -> IO CalendarTime
+parseFromDate bs =
+  let s = SB.unpack bs 
+      ns = (/=) ' '
+      iss = (==) ' '
+      ds = strip $ dropWhile ns $ dropWhile iss $ dropWhile ns s
+      f = fmap strip (words ds)
+      d = splitOn ":" (f!!3)
+      readInt n s = case readMaybe s of
+                    Just v -> v
+                    Nothing -> throw $ InvalidDateFieldInFrom n bs
+  in
+    if length f == 6
+    then
+      if f!!4 == "+0000"
+      then
+        return CalendarTime
+      { ctYear    = readInt "year" (f!!5)
+      , ctMonth   = readMonth (f!!1)
+      , ctDay     = readInt "day" (f!!2)
+      , ctHour    = readInt "hour" (d!!0)
+      , ctMin     = readInt "min" (d!!1)
+      , ctSec     = readInt "sec" (d!!2)
+      , ctPicosec = 0
+      , ctWDay    = readDay (f!!0)
+      , ctYDay    = 0 -- Boldly assume this field is unused
+      , ctTZName  = "UTC"
+      , ctTZ      = 0
+      , ctIsDST   = False
+      }
+      else throw $ MissingDateInFrom bs
+    else throw $ MissingDateInFrom bs
+
+uploadMessage :: IMAPConnection -> String -> SB.ByteString -> String -> Set String -> SB.ByteString -> IO ()
+uploadMessage conn msgid msgdates tag folders msg =
   let msglf = SB.filter ((/=) '\r') msg
       folders' = Set.delete tag folders
   in do
     -- putStrLn (SB.unpack msg)
-    appendFull conn (strip tag) msglf (Just [Seen]) Nothing
+    pPrint msgdates
+    msgdate <- parseFromDate msgdates
+    appendFull conn (strip tag) msglf (Just [Seen]) (Just msgdate)
     -- Add labels
     unless (Set.null folders') 
       do
@@ -191,8 +257,8 @@ processMessage opts cfg conn m =
                   lift $ modify (\s -> s {folders = Set.union l' (folders s)})
                   let lf = SB.pack "\n"
                   let rawmsg = (headers m) `SB.append` lf `SB.append` (body m)
-                  case (findh "Message-ID",findh "Date") of
-                    (Just mid,Just md) -> liftIO $ uploadMessage conn mid md (taglabel cfg) l' rawmsg
+                  case findh "Message-ID" of
+                    Just mid -> liftIO $ uploadMessage conn mid (fromLine m) (taglabel cfg) l' rawmsg
                     _ -> throw $ MissingHeaders rawh
             Nothing ->
               throw $ MissingHeaders rawh
