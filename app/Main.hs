@@ -202,7 +202,7 @@ parseFromDate bs =
       , ctPicosec = 0
       , ctWDay    = readDay (f!!0)
       , ctYDay    = 0 -- Boldly assume this field is unused
-      , ctTZName  = "UTC"
+      , ctTZName  = f!!4
       , ctTZ      = 0
       , ctIsDST   = False
       }
