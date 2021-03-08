@@ -215,7 +215,6 @@ uploadMessage conn msgid msgdates tag folders msg =
       folders' = Set.delete tag folders
   in do
     -- putStrLn (SB.unpack msg)
-    pPrint msgdates
     msgdate <- parseFromDate msgdates
     appendFull conn (strip tag) msglf (Just [Seen]) (Just msgdate)
     -- Add labels
@@ -295,7 +294,6 @@ main =
         else connectIMAPSSL "imap.gmail.com"
       login conn (username config) (password config)
       mblist <- list conn
-      -- mapM (pPrint . show) (map snd mblist)
       withFile inputfile ReadMode
         (\f ->
            let p =
