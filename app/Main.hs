@@ -228,11 +228,11 @@ uploadMessage opts conn msgid msgdates tag folders msg =
       do
         uids <- search conn [HEADERs "Message-ID" msgid]
         case uids of
-          uid:[] -> do
+          []    -> throw IMAPAppendError
+          uids -> do
             let flist = Set.toList folders'
             when (optVerbose opts) $ putStrLn ("\t+Labels: " <> show flist)
-            store conn uid (PlusGmailLabels flist)
-          _    -> throw IMAPAppendError
+            mapM_ (\uid -> store conn uid (PlusGmailLabels flist)) uids
 
 processMessage :: Options -> Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
 processMessage opts cfg conn m =
