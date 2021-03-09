@@ -55,6 +55,7 @@ data Config = Config
 
 data Options = Options
     { optVerbose :: Bool
+    , optDebug :: Bool
     , optDryRun  :: Bool
     , optConfig  :: String
     , optSkip    :: Int
@@ -63,6 +64,7 @@ data Options = Options
 
 defaultOptions = Options
     { optVerbose     = False
+    , optDebug       = False
     , optDryRun      = False
     , optConfig      = "takeoutupload.cfg"
     , optSkip        = 0
@@ -73,10 +75,13 @@ options :: [OptDescr (Options -> Either String Options)]
 options =
     [ Option ['v']     ["verbose"]
         (NoArg (\ opts -> Right opts { optVerbose = True }))
-        "chatty output on stderr"
-    , Option ['d']     ["dry-run"]
+        "verbose output on stderr"
+    , Option ['d']     ["debug"]
+        (NoArg (\ opts -> Right opts { optDebug = True }))
+        "debug output on stderr"      
+    , Option ['n']     ["dry-run"]
         (NoArg (\ opts -> Right opts { optDryRun = True }))
-        "verobose progress on stderr"
+        "dry-run mode - do not modify IMAP account"
     , Option ['c']     ["config"]
         (ReqArg (\ d opts -> Right opts { optConfig = d }) "FILE")
         "config file"
@@ -209,20 +214,24 @@ parseFromDate bs =
       else throw $ MissingDateInFrom bs
     else throw $ MissingDateInFrom bs
 
-uploadMessage :: IMAPConnection -> String -> SB.ByteString -> String -> Set String -> SB.ByteString -> IO ()
-uploadMessage conn msgid msgdates tag folders msg =
+uploadMessage :: Options -> IMAPConnection -> String -> SB.ByteString -> String -> Set String -> SB.ByteString -> IO ()
+uploadMessage opts conn msgid msgdates tag folders msg =
   let msglf = SB.filter ((/=) '\r') msg
       folders' = Set.delete tag folders
   in do
     -- putStrLn (SB.unpack msg)
     msgdate <- parseFromDate msgdates
+    when (optVerbose opts) $ putStrLn ("\tMsgID: " <> show msgid)
     appendFull conn (strip tag) msglf (Just [Seen]) (Just msgdate)
     -- Add labels
     unless (Set.null folders') 
       do
         uids <- search conn [HEADERs "Message-ID" msgid]
         case uids of
-          uid:[] -> store conn uid (PlusGmailLabels (Set.toList folders'))
+          uid:[] -> do
+            let flist = Set.toList folders'
+            when (optVerbose opts) $ putStrLn ("\t+Labels: " <> show flist)
+            store conn uid (PlusGmailLabels flist)
           _    -> throw IMAPAppendError
 
 processMessage :: Options -> Config -> IMAPConnection -> Message -> Effect (StateT ST IO) ()
@@ -245,8 +254,7 @@ processMessage opts cfg conn m =
             Just l ->
               let lset = Set.fromList (fmap strip (splitOn "," l)) in
                 if testRegexp lset (skiplabels cfg) then
-                  when (optVerbose opts)
-                    $ liftIO $ putStrLn ("====== Skipping #" <> show n)
+                  liftIO $ putStrLn ("====== Skipping #" <> show n)
                 else do
                   liftIO $ putStrLn ("====== Processing #" <> show n <> ":")
                   let l' = Set.filter (not . matchTest (striplabels cfg)) lset
@@ -257,7 +265,9 @@ processMessage opts cfg conn m =
                   let lf = SB.pack "\n"
                   let rawmsg = (headers m) `SB.append` lf `SB.append` (body m)
                   case findh "Message-ID" of
-                    Just mid -> liftIO $ uploadMessage conn mid (fromLine m) (taglabel cfg) l' rawmsg
+                    Just mid ->
+                      unless (optDryRun opts) $
+                      liftIO $ uploadMessage opts conn mid (fromLine m) (taglabel cfg) l' rawmsg
                     _ -> throw $ MissingHeaders rawh
             Nothing ->
               throw $ MissingHeaders rawh
@@ -288,7 +298,7 @@ main =
       (opts, inputfile) <- getArgs >>= parseOpts
       config  <- readConfig (optConfig opts)
       conn <-
-        if optVerbose opts
+        if optDebug opts
         then connectIMAPSSLWithSettings "imap.gmail.com"
              (defaultSettingsIMAPSSL {sslLogToConsole = True})
         else connectIMAPSSL "imap.gmail.com"
