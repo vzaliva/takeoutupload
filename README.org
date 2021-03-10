@@ -1,4 +1,4 @@
-* Goolge Takout Upload
+* Goolge Takeout Upload
 
 This script allows to import email archive (/mbox/ file) produced by
 [[https://takeout.google.com/settings/takeout][Google Takeout]] into another GMail account. While it is using IMAP
