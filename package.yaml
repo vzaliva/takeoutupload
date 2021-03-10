@@ -7,7 +7,7 @@ maintainer:          "lord@crocodile.org"
 copyright:           "2020 Vadim Zaliva"
 
 extra-source-files:
-- README.md
+- README.org
 - ChangeLog.md
 
 # Metadata used when publishing your package
