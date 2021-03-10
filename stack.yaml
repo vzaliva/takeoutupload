@@ -35,8 +35,10 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
-- patched/HaskellNet
-- patched/HaskellNet-SSL
+  - git: https://github.com/vzaliva/HaskellNet.git
+    commit: 3d54c67b64f93a68f96b86ad2a29bc2a3675e1e3
+  - git: https://github.com/vzaliva/HaskellNet-SSL.git
+    commit: d0dc4d4a33e49f2910cf66c3cbac907bb1bfc366
 
 
 # extra-deps:
