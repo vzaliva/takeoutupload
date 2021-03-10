@@ -1,0 +1,20 @@
+* Goolge Takout Upload
+
+This program allows to import email archive (mbox file) produced by
+[[https://takeout.google.com/settings/takeout][Google Takout]] into another GMail account. While it is using IMAP
+interface for import, unlike other scripts like [[https://imapsync.lamiral.info/][imapsync]] it uses GMail
+IMAP extension preserving message labels.
+
+Run without any flags to see usage information. See
+/takeoutupload-example.cfg/ file for example config.
+
+It is written as learning exercise in Haskell Pipes library.  It can
+process maiboxes of arbitrary sizes in fixed memory footprint.
+
+* References
+  - [[https://developers.google.com/gmail/imap/imap-extensions#access_to_gmail_labels_x-gm-labels][GMail IMAP extensions]]
+  - [[https://imapsync.lamiral.info/FAQ.d/FAQ.Gmail.txt][Note]] on GMail throttling 
+* Implementation
+  - Uploads a message to folder with name from `tag` in config file.
+  - Append other labels using the STORE command in conjunction with the
+    +X-GM-LABELS attribute (GMail IMAP extension).
