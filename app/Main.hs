@@ -20,6 +20,7 @@ import qualified Data.Set                           as Set
 import           Data.String.Utils                  (strip)
 import           Mbox
 import           Network.Connection
+import           Network.HaskellNet.IMAP            (SearchQuery (XGMRAW))
 import           Network.HaskellNet.IMAP.Connection (IMAPConnection)
 import           Network.HaskellNet.IMAP.SSL
 import           Network.HaskellNet.IMAP.Types      (UID)
@@ -216,52 +217,9 @@ parseFromDate bs =
       else throw $ MissingDateInFrom bs
     else throw $ MissingDateInFrom bs
 
-
-{- Quote special chars not allowed in search query -}
-quoteSearchTerm :: String -> String
-quoteSearchTerm [] = []
-quoteSearchTerm (c:cs) =
-  let isQuotable c = elem c "*%(){" ||
-        (let v = ord c in v <=31 || v==127) -- rfc5234
-  in
-    if isQuotable c
-    then '\\':c:quoteSearchTerm cs
-    else c:quoteSearchTerm cs
-
-quoteSearchTerm1 :: String -> String
-quoteSearchTerm1 s = "\"" ++ (quoteSearchTerm s) ++ "\""
-
-msgIdMatch :: IMAPConnection -> String -> UID -> IO (Bool)
-msgIdMatch conn msgid uid = do
-  fields <- fetchHeaderFields conn uid ["Message-ID"]
-  -- exactly one field is expected
-  case SB.elemIndex ':' fields of
-    Just i ->
-      let (n,v) = SB.splitAt i fields in
-        return ((SB.strip v) == SB.pack msgid)
-    Nothing -> throw (MissingMSID fields)
-    
-  return False
-
-{- GMail search fails to find Message-IDs containing certain special
-charactes.
-
-This workaround is inspired by this discussion:
-
-https://stackoverflow.com/questions/9589583/imap-search-header-command-failing-when-search-text-contains-exclamation-mark
--}
 gmailSearch :: IMAPConnection -> String -> IO [UID]
 gmailSearch conn msgid =
-  let specials  = "<>!%"
-      fragments = filter (not.null) $ splitOneOf specials msgid
-      query = fmap (HEADERs "Message-ID") fragments
-  in
-    case query of
-      [] -> return []
-      _ -> do
-        -- TODO: optimize for the case when there is no special characters
-        uids <- search conn query
-        filterM (msgIdMatch conn msgid) uids
+  search conn [XGMRAW ("\"Rfc822msgid:"++msgid++"\"")]
 
 uploadMessage :: Options -> IMAPConnection -> String -> SB.ByteString -> String -> Set String -> SB.ByteString -> IO ()
 uploadMessage opts conn msgid msgdates tag folders msg =
