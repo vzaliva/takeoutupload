@@ -217,13 +217,20 @@ parseFromDate bs =
       else throw $ MissingDateInFrom bs
     else throw $ MissingDateInFrom bs
 
-{- There is a problem in Gmail IMAP implementation with
-UID SEARCH command: it fails if Message-Id contains '%' character.
-As workaround, we are using X-GM-RAW Gmail IMAP extension instead.
+{-
+
+There is a problem in Gmail IMAP implementation with UID SEARCH
+command: it fails if Message-Id contains '%' character.  As
+workaround, we are using X-GM-RAW Gmail IMAP extension instead.
+
+Additionally, GMail seems to be stripping square brackets from
+Message-IDs!
+
 -}
 gmailSearch :: IMAPConnection -> String -> IO [UID]
 gmailSearch conn msgid =
-  search conn [XGMRAW ("\"Rfc822msgid:"++msgid++"\"")]
+  let msgid' = filter (\c -> not $ elem c "[]") msgid in
+  search conn [XGMRAW ("\"Rfc822msgid:" ++ msgid' ++ "\"")]
 
 uploadMessage :: Options -> IMAPConnection -> String -> SB.ByteString -> String -> Set String -> SB.ByteString -> IO ()
 uploadMessage opts conn msgid msgdates tag folders msg =
