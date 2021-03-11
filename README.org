@@ -2,8 +2,10 @@
 
 This script allows to import email archive (/mbox/ file) produced by
 [[https://takeout.google.com/settings/takeout][Google Takeout]] into another GMail account. While it is using IMAP
-protocol for import, unlike other scripts like [[https://imapsync.lamiral.info/][imapsync]] it uses GMail
-IMAP extensions to preserve message labels.
+protocol for import, unlike other scripts which use only standard IMAP
+protocol it uses GMail IMAP extensions to preserve message
+labels. Additionally it implements some gmail-specific workarounds for
+bugs in Gmail IMAP.
 
 Run without any flags to see usage information. See
 /takeoutupload-example.cfg/ file for sample config.
