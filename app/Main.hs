@@ -265,30 +265,27 @@ processMessage opts cfg conn m =
       Nothing ->
         throw $ ParseError rawh
       Just hassoc ->
-        let findh name = find ((==) (CI.mk (SB.pack name)) . fst) hassoc >>= (return . strip . SB.unpack . snd) in
-          -- at very least we need this field, to filter out Chat messages
-          -- which do not have MessageId
-          case findh "X-Gmail-Labels" of
-            Just l ->
-              let lset = Set.fromList (fmap strip (splitOn "," l)) in
-                if testRegexp lset (skiplabels cfg) then
-                  liftIO $ putStrLn ("====== Skipping #" <> show n)
-                else do
-                  liftIO $ putStrLn ("====== Processing #" <> show n <> ":")
-                  let l' = Set.filter (not . matchTest (striplabels cfg)) lset
-                  oldfolders <- (lift . gets) folders
-                  let newfolders = Set.difference l' oldfolders
-                  liftIO $ createFolders conn opts newfolders
-                  lift $ modify (\s -> s {folders = Set.union l' (folders s)})
-                  let lf = SB.pack "\n"
-                  let rawmsg = (headers m) `SB.append` lf `SB.append` (body m)
-                  case findh "Message-ID" of
-                    Just mid ->
-                      unless (optDryRun opts) $
-                      liftIO $ uploadMessage opts conn mid (fromLine m) (taglabel cfg) l' rawmsg
-                    _ -> throw $ MissingHeaders rawh
-            Nothing ->
-              throw $ MissingHeaders rawh
+        let findh name = find ((==) (CI.mk (SB.pack name)) . fst) hassoc >>= (return . strip . SB.unpack . snd) 
+            lset = case findh "X-Gmail-Labels" of
+                     Just l -> Set.fromList (fmap strip (splitOn "," l))
+                     Nothing -> Set.empty
+        in
+          if testRegexp lset (skiplabels cfg) then
+            liftIO $ putStrLn ("====== Skipping #" <> show n)
+          else do
+            liftIO $ putStrLn ("====== Processing #" <> show n <> ":")
+            let l' = Set.filter (not . matchTest (striplabels cfg)) lset
+            oldfolders <- (lift . gets) folders
+            let newfolders = Set.difference l' oldfolders
+            liftIO $ createFolders conn opts newfolders
+            lift $ modify (\s -> s {folders = Set.union l' (folders s)})
+            let lf = SB.pack "\n"
+            let rawmsg = (headers m) `SB.append` lf `SB.append` (body m)
+            case findh "Message-ID" of
+              Just mid ->
+                unless (optDryRun opts) $
+                liftIO $ uploadMessage opts conn mid (fromLine m) (taglabel cfg) l' rawmsg
+              _ -> throw $ MissingHeaders rawh
 
 -- empty procducer
 emptyP :: MonadIO m => Producer SB.ByteString m ()
