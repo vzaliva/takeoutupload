@@ -217,6 +217,10 @@ parseFromDate bs =
       else throw $ MissingDateInFrom bs
     else throw $ MissingDateInFrom bs
 
+{- There is a problem in Gmail IMAP implementation with
+UID SEARCH command: it fails if Message-Id contains '%' character.
+As workaround, we are using X-GM-RAW Gmail IMAP extension instead.
+-}
 gmailSearch :: IMAPConnection -> String -> IO [UID]
 gmailSearch conn msgid =
   search conn [XGMRAW ("\"Rfc822msgid:"++msgid++"\"")]
