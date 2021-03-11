@@ -9,11 +9,11 @@ import           Control.Monad.Trans.State.Strict
 import qualified Data.ByteString.Char8              as SB
 import           Data.CaseInsensitive               (CI)
 import qualified Data.CaseInsensitive               as CI
-import           Data.Char                          (isSpace)
+import           Data.Char                          (isSpace, ord)
 import qualified Data.ConfigFile                    as Cfg
 import           Data.Either.Utils
 import           Data.List
-import           Data.List.Split                    (splitOn)
+import           Data.List.Split                    (splitOn, splitOneOf)
 import           Data.Maybe
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
@@ -22,6 +22,7 @@ import           Mbox
 import           Network.Connection
 import           Network.HaskellNet.IMAP.Connection (IMAPConnection)
 import           Network.HaskellNet.IMAP.SSL
+import           Network.HaskellNet.IMAP.Types      (UID)
 import           Pipes
 import qualified Pipes.Lift                         as PL
 import qualified Pipes.Prelude                      as P
@@ -38,6 +39,7 @@ data ImportException =
   ParseError SB.ByteString
   | MissingHeaders SB.ByteString
   | DataLeft SB.ByteString
+  | MissingMSID SB.ByteString
   | IMAPAppendError
   | MissingDateInFrom SB.ByteString
   | InvalidDateFieldInFrom String SB.ByteString
@@ -214,6 +216,53 @@ parseFromDate bs =
       else throw $ MissingDateInFrom bs
     else throw $ MissingDateInFrom bs
 
+
+{- Quote special chars not allowed in search query -}
+quoteSearchTerm :: String -> String
+quoteSearchTerm [] = []
+quoteSearchTerm (c:cs) =
+  let isQuotable c = elem c "*%(){" ||
+        (let v = ord c in v <=31 || v==127) -- rfc5234
+  in
+    if isQuotable c
+    then '\\':c:quoteSearchTerm cs
+    else c:quoteSearchTerm cs
+
+quoteSearchTerm1 :: String -> String
+quoteSearchTerm1 s = "\"" ++ (quoteSearchTerm s) ++ "\""
+
+msgIdMatch :: IMAPConnection -> String -> UID -> IO (Bool)
+msgIdMatch conn msgid uid = do
+  fields <- fetchHeaderFields conn uid ["Message-ID"]
+  -- exactly one field is expected
+  case SB.elemIndex ':' fields of
+    Just i ->
+      let (n,v) = SB.splitAt i fields in
+        return ((SB.strip v) == SB.pack msgid)
+    Nothing -> throw (MissingMSID fields)
+    
+  return False
+
+{- GMail search fails to find Message-IDs containing certain special
+charactes.
+
+This workaround is inspired by this discussion:
+
+https://stackoverflow.com/questions/9589583/imap-search-header-command-failing-when-search-text-contains-exclamation-mark
+-}
+gmailSearch :: IMAPConnection -> String -> IO [UID]
+gmailSearch conn msgid =
+  let specials  = "<>!%"
+      fragments = filter (not.null) $ splitOneOf specials msgid
+      query = fmap (HEADERs "Message-ID") fragments
+  in
+    case query of
+      [] -> return []
+      _ -> do
+        -- TODO: optimize for the case when there is no special characters
+        uids <- search conn query
+        filterM (msgIdMatch conn msgid) uids
+
 uploadMessage :: Options -> IMAPConnection -> String -> SB.ByteString -> String -> Set String -> SB.ByteString -> IO ()
 uploadMessage opts conn msgid msgdates tag folders msg =
   let msglf = SB.filter ((/=) '\r') msg
@@ -226,7 +275,7 @@ uploadMessage opts conn msgid msgdates tag folders msg =
     -- Add labels
     unless (Set.null folders') 
       do
-        uids <- search conn [HEADERs "Message-ID" msgid]
+        uids <- gmailSearch conn msgid
         case uids of
           []    -> throw IMAPAppendError
           uids -> do
