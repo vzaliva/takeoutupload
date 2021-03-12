@@ -18,7 +18,8 @@ transcript.
 * References
   - [[https://developers.google.com/gmail/imap/imap-extensions#access_to_gmail_labels_x-gm-labels][GMail IMAP extensions]]
   - [[https://imapsync.lamiral.info/FAQ.d/FAQ.Gmail.txt][Note]] on GMail throttling 
-* Implementation
+* Implementation Notes
   - Uploads each message to folder with name from "tag" in config file.
   - Append other labels using the *STORE* command in conjunction with the
     *+X-GM-LABELS* attribute (GMail IMAP extension).
+  - [[https://lambda-files.crocodile.org/2021/03/importing-mail-from-google-takout-into.html][blog post]]
