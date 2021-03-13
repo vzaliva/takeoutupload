@@ -37,8 +37,8 @@ packages:
 extra-deps:
   - git: https://github.com/vzaliva/HaskellNet.git
     commit: c4e1f716d868ca5d07a75abda388d7d436642ff0
-  - git: https://github.com/vzaliva/HaskellNet-SSL.git
-    commit: d0dc4d4a33e49f2910cf66c3cbac907bb1bfc366
+  - git: git@github.com:dpwright/HaskellNet-SSL.git
+    commit: e672761a7a5d4624306831c7fca25b3e269ee289
 
 
 # extra-deps:
